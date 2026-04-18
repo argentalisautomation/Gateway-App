@@ -127,6 +127,36 @@
             font-size: 14px;
             background-color: #007aff;
         }
+
+        /* Radar Card CSS */
+        .radar-card {
+            background-color: #1e1e1e;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            width: 100%;
+            max-width: 350px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            box-sizing: border-box;
+            border: 2px solid transparent;
+            transition: border-color 0.3s ease;
+        }
+        .radar-card.presence { border-color: #ff3b30; }
+        .radar-header { display: flex; justify-content: space-between; width: 100%; font-weight: bold; margin-bottom: 15px; }
+        .radar-status { font-size: 24px; color: #34c759; transition: color 0.3s ease; }
+        .radar-card.presence .radar-status { color: #ff3b30; }
+        .radar-dist { font-size: 18px; color: #aaa; }
+        
+        .calib-btn { background-color: #555; padding: 10px; font-size: 14px; margin-bottom: 10px; }
+        
+        /* Bar Chart CSS */
+        .chart-container { display: none; width: 100%; margin-top: 15px; }
+        .chart-row { display: flex; align-items: flex-end; height: 60px; gap: 2px; margin-bottom: 10px; border-bottom: 1px solid #444; position: relative; }
+        .chart-bar { flex: 1; background-color: #007aff; border-radius: 2px 2px 0 0; transition: height 0.1s; display: flex; flex-direction: column; justify-content: flex-end; align-items: center;}
+        .chart-bar span { font-size: 8px; margin-bottom: 2px; color: white; }
+        .chart-label { font-size: 10px; color: #888; text-align: center; margin-bottom: 5px; }
     </style>
 </head>
 
@@ -161,6 +191,7 @@
         const CMD_UUID     = '12345678-1234-5678-1234-56789abcdef2';
         const STATE_UUID   = '12345678-1234-5678-1234-56789abcdef3';
         const CONFIG_UUID  = '12345678-1234-5678-1234-56789abcdef4';
+        const LD2420_UUID  = '12345678-1234-5678-1234-56789abcdef5';
 
         let bleDevice;
         let gattServer;
@@ -207,6 +238,13 @@
                 statusEl.textContent = 'Subscribing to State Updates...';
                 await stateChar.startNotifications();
                 stateChar.addEventListener('characteristicvaluechanged', handleStateUpdate);
+
+                                statusEl.textContent = 'Subscribing to Radar Updates...';
+                try {
+                    const radarChar = await service.getCharacteristic(LD2420_UUID);
+                    await radarChar.startNotifications();
+                    radarChar.addEventListener('characteristicvaluechanged', handleRadarUpdate);
+                } catch(e) { console.log('Radar char not found'); }
 
                 statusEl.textContent = 'Connected & Synced';
                 connectBtn.style.display = 'none';
@@ -324,32 +362,106 @@
             }
         }
 
+                let calibMode = false;
+
+        function handleRadarUpdate(event) {
+            const view = event.target.value;
+            const presence = view.getUint8(0);
+            const dist = view.getUint16(1, true);
+            
+            const card = document.getElementById('radar-card');
+            if(card) {
+                const statusEl = card.querySelector('.radar-status');
+                const distEl = card.querySelector('.radar-dist');
+                if(presence > 0) {
+                    card.classList.add('presence');
+                    statusEl.textContent = 'Presence Detected';
+                } else {
+                    card.classList.remove('presence');
+                    statusEl.textContent = 'Clear';
+                }
+                distEl.textContent = (dist > 0 && dist < 1500) ? (dist/100).toFixed(2) + ' m' : '';
+            }
+
+            if(calibMode) {
+                for(let i=0; i<16; i++) {
+                    const moveE = view.getUint8(5 + i);
+                    const stillE = view.getUint8(21 + i);
+                    
+                    const mBar = document.getElementById(`mbar-${i}`);
+                    const sBar = document.getElementById(`sbar-${i}`);
+                    if(mBar) {
+                        mBar.style.height = Math.max(moveE, 5) + '%';
+                        mBar.querySelector('span').textContent = moveE;
+                    }
+                    if(sBar) {
+                        sBar.style.height = Math.max(stillE, 5) + '%';
+                        sBar.querySelector('span').textContent = stillE;
+                    }
+                }
+            }
+        }
+
+        function toggleCalib() {
+            calibMode = !calibMode;
+            document.getElementById('calib-container').style.display = calibMode ? 'block' : 'none';
+        }
+
         function renderUI() {
             deviceList.innerHTML = '';
             for (const [id, dev] of Object.entries(devices)) {
-                const card = document.createElement('div');
-                card.className = 'device-card';
+                if (dev.type === 2) { // Radar
+                    const card = document.createElement('div');
+                    card.className = 'radar-card';
+                    card.id = 'radar-card';
+                    
+                    let chartHTML = `<div class="chart-container" id="calib-container">
+                        <div style="font-size:12px; margin-bottom:5px; color:#aaa;">Moving Energy</div>
+                        <div class="chart-row">`;
+                    for(let i=0; i<16; i++) {
+                        chartHTML += `<div style="flex:1;"><div class="chart-bar" id="mbar-${i}" style="height:5%;"><span>0</span></div><div class="chart-label">${i}</div></div>`;
+                    }
+                    chartHTML += `</div><div style="font-size:12px; margin-bottom:5px; color:#aaa;">Still Energy</div><div class="chart-row">`;
+                    for(let i=0; i<16; i++) {
+                        chartHTML += `<div style="flex:1;"><div class="chart-bar" id="sbar-${i}" style="height:5%; background-color:#ff9500;"><span>0</span></div><div class="chart-label">${i}</div></div>`;
+                    }
+                    chartHTML += `</div></div>`;
 
-                const nameEl = document.createElement('span');
-                nameEl.textContent = dev.name;
+                    card.innerHTML = `
+                        <div class="radar-header">
+                            <span>${dev.name}</span>
+                            <span class="radar-status">Clear</span>
+                        </div>
+                        <div class="radar-dist"></div>
+                        <button class="calib-btn" onclick="toggleCalib()">Toggle Calibration View</button>
+                        ${chartHTML}
+                    `;
+                    deviceList.prepend(card);
+                } else if (dev.type === 1) { // Switch
+                    const card = document.createElement('div');
+                    card.className = 'device-card';
 
-                const toggleBtn = document.createElement('div');
-                toggleBtn.className = `toggle-btn ${dev.state ? 'on' : ''}`;
-                toggleBtn.id = `toggle-${id}`;
+                    const nameEl = document.createElement('span');
+                    nameEl.textContent = dev.name;
 
-                const knob = document.createElement('div');
-                knob.className = 'toggle-knob';
+                    const toggleBtn = document.createElement('div');
+                    toggleBtn.className = `toggle-btn ${dev.state ? 'on' : ''}`;
+                    toggleBtn.id = `toggle-${id}`;
 
-                toggleBtn.appendChild(knob);
+                    const knob = document.createElement('div');
+                    knob.className = 'toggle-knob';
 
-                toggleBtn.addEventListener('click', () => {
-                    const newState = toggleBtn.classList.contains('on') ? 0 : 1;
-                    sendCommand(parseInt(id), newState);
-                });
+                    toggleBtn.appendChild(knob);
 
-                card.appendChild(nameEl);
-                card.appendChild(toggleBtn);
-                deviceList.appendChild(card);
+                    toggleBtn.addEventListener('click', () => {
+                        const newState = toggleBtn.classList.contains('on') ? 0 : 1;
+                        sendCommand(parseInt(id), newState);
+                    });
+
+                    card.appendChild(nameEl);
+                    card.appendChild(toggleBtn);
+                    deviceList.appendChild(card);
+                }
             }
         }
 
