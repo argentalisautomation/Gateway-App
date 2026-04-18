@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gateway Control</title>
+    <link rel="manifest" href="manifest.json">
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background-color: #121212;
+            color: #ffffff;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+
+        h2, h3 { margin-top: 10px; margin-bottom: 10px; }
+
+        button {
+            background-color: #333;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 10px 0;
+            width: 100%;
+            max-width: 300px;
+        }
+
+        button:hover { background-color: #444; }
+        button:active { background-color: #555; }
+
+        .device-card {
+            background-color: #1e1e1e;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            width: 100%;
+            max-width: 300px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-sizing: border-box;
+        }
+
+        .toggle-btn {
+            background-color: #ff3b30;
+            width: 60px;
+            height: 30px;
+            border-radius: 15px;
+            position: relative;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .toggle-btn.on { background-color: #34c759; }
+
+        .toggle-knob {
+            width: 26px;
+            height: 26px;
+            background-color: white;
+            border-radius: 50%;
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            transition: transform 0.2s;
+        }
+
+        .toggle-btn.on .toggle-knob { transform: translateX(30px); }
+
+        #deviceList {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #status {
+            margin-top: 20px;
+            color: #888;
+            font-size: 14px;
+            text-align: center;
+        }
+
+        #settingsPanel {
+            background-color: #1a1a1a;
+            padding: 15px;
+            border-radius: 10px;
+            width: 100%;
+            max-width: 300px;
+            margin-top: 20px;
+            box-sizing: border-box;
+        }
+
+        .setting-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .setting-item input {
+            width: 60px;
+            padding: 5px;
+            background: #333;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            text-align: center;
+        }
+
+        .setting-item button {
+            width: auto;
+            padding: 5px 10px;
+            margin: 0;
+            font-size: 14px;
+            background-color: #007aff;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>ESP-NOW Gateway</h1>
+    <button id="connectBtn">Connect Bluetooth</button>
+    <div id="deviceList"></div>
+    
+    <div id="settingsPanel" style="display: none;">
+        <h2>Settings</h2>
+        <div class="setting-item">
+            <label>IIR Filter (ms):</label>
+            <input type="number" id="iirInput" min="1" max="1000">
+            <button onclick="saveIIR()">Save</button>
+        </div>
+        <div class="setting-item">
+            <label>Debounce (ms):</label>
+            <input type="number" id="debounceInput" min="10" max="5000">
+            <button onclick="saveDebounce()">Save</button>
+        </div>
+        <hr style="border-color:#333; margin:15px 0;">
+        <h3>Touch Threshold Offsets</h3>
+        <p style="font-size:12px; color:#888;">Higher offset = Harder to press</p>
+        <div id="offsetsContainer"></div>
+    </div>
+
+    <div id="status">Disconnected</div>
+
+    <script>
+        const SERVICE_UUID = '12345678-1234-5678-1234-56789abcdef0';
+        const ROSTER_UUID  = '12345678-1234-5678-1234-56789abcdef1';
+        const CMD_UUID     = '12345678-1234-5678-1234-56789abcdef2';
+        const STATE_UUID   = '12345678-1234-5678-1234-56789abcdef3';
+        const CONFIG_UUID  = '12345678-1234-5678-1234-56789abcdef4';
+
+        let bleDevice;
+        let gattServer;
+        let cmdChar;
+        let configChar;
+        let devices = {};
+        let configs = { offsets: [50,50,50,50,50,50], iir: 10, debounce: 500 };
+
+        const statusEl = document.getElementById('status');
+        const connectBtn = document.getElementById('connectBtn');
+        const deviceList = document.getElementById('deviceList');
+        const settingsPanel = document.getElementById('settingsPanel');
+
+        connectBtn.addEventListener('click', async () => {
+            try {
+                statusEl.textContent = 'Requesting Bluetooth Device...';
+                bleDevice = await navigator.bluetooth.requestDevice({
+                    filters: [{ namePrefix: 'ESP32_Gateway' }],
+                    optionalServices: [SERVICE_UUID]
+                });
+
+                bleDevice.addEventListener('gattserverdisconnected', onDisconnected);
+
+                statusEl.textContent = 'Connecting to GATT Server...';
+                gattServer = await bleDevice.gatt.connect();
+
+                statusEl.textContent = 'Getting Service...';
+                const service = await gattServer.getPrimaryService(SERVICE_UUID);
+
+                statusEl.textContent = 'Getting Characteristics...';
+                const rosterChar = await service.getCharacteristic(ROSTER_UUID);
+                cmdChar = await service.getCharacteristic(CMD_UUID);
+                const stateChar = await service.getCharacteristic(STATE_UUID);
+                configChar = await service.getCharacteristic(CONFIG_UUID);
+
+                statusEl.textContent = 'Reading Roster...';
+                const rosterValue = await rosterChar.readValue();
+                parseRoster(rosterValue.buffer);
+
+                statusEl.textContent = 'Reading Configuration...';
+                const configValue = await configChar.readValue();
+                parseConfig(configValue.buffer);
+
+                statusEl.textContent = 'Subscribing to State Updates...';
+                await stateChar.startNotifications();
+                stateChar.addEventListener('characteristicvaluechanged', handleStateUpdate);
+
+                statusEl.textContent = 'Connected & Synced';
+                connectBtn.style.display = 'none';
+            } catch (error) {
+                statusEl.textContent = 'Error: ' + error.message;
+                console.error(error);
+            }
+        });
+
+        function onDisconnected() {
+            statusEl.textContent = 'Disconnected';
+            connectBtn.style.display = 'block';
+            deviceList.innerHTML = '';
+            settingsPanel.style.display = 'none';
+            devices = {};
+        }
+
+        function parseRoster(buffer) {
+            const view = new DataView(buffer);
+            let offset = 0;
+            while (offset < view.byteLength) {
+                const id = view.getUint8(offset++);
+                const type = view.getUint8(offset++);
+                const state = view.getUint8(offset++);
+                const nameLen = view.getUint8(offset++);
+
+                const nameBytes = new Uint8Array(buffer, offset, nameLen);
+                const name = new TextDecoder().decode(nameBytes);
+                offset += nameLen;
+
+                devices[id] = { type, state, name };
+            }
+            renderUI();
+        }
+
+        function parseConfig(buffer) {
+            const view = new DataView(buffer);
+            configs.offsets = [];
+            for (let i = 0; i < 6; i++) {
+                configs.offsets.push(view.getUint16(i * 2, true));
+            }
+            configs.iir = view.getUint32(12, true);
+            configs.debounce = view.getUint32(16, true);
+            renderSettings();
+            settingsPanel.style.display = 'block';
+        }
+
+        function renderSettings() {
+            document.getElementById('iirInput').value = configs.iir;
+            document.getElementById('debounceInput').value = configs.debounce;
+            const container = document.getElementById('offsetsContainer');
+            container.innerHTML = '';
+            for (let i = 0; i < 6; i++) {
+                const div = document.createElement('div');
+                div.className = 'setting-item';
+                div.innerHTML = `
+                    <label>S${i + 1} Threshold Offset:</label>
+                    <input type="number" id="offsetInput${i + 1}" value="${configs.offsets[i]}" min="1" max="1000">
+                    <button onclick="saveOffset(${i + 1})">Save</button>
+                `;
+                container.appendChild(div);
+            }
+        }
+
+        async function saveIIR() {
+            if (!configChar) return;
+            const val = parseInt(document.getElementById('iirInput').value);
+            const payload = new Uint8Array(5);
+            payload[0] = 2; // Type 2
+            new DataView(payload.buffer).setUint32(1, val, true);
+            try { 
+                await configChar.writeValue(payload); 
+                alert("IIR Saved! ESP32 may need a reboot for filter changes."); 
+                statusEl.textContent = 'Config Updated';
+            } catch(e) { statusEl.textContent = 'Failed: ' + e; }
+        }
+
+        async function saveDebounce() {
+            if (!configChar) return;
+            const val = parseInt(document.getElementById('debounceInput').value);
+            const payload = new Uint8Array(5);
+            payload[0] = 3; // Type 3
+            new DataView(payload.buffer).setUint32(1, val, true);
+            try { 
+                await configChar.writeValue(payload); 
+                statusEl.textContent = 'Config Updated';
+            } catch(e) { statusEl.textContent = 'Failed: ' + e; }
+        }
+
+        async function saveOffset(id) {
+            if (!configChar) return;
+            const val = parseInt(document.getElementById(`offsetInput${id}`).value);
+            const payload = new Uint8Array(4);
+            payload[0] = 1; // Type 1
+            payload[1] = id;
+            new DataView(payload.buffer).setUint16(2, val, true);
+            try { 
+                await configChar.writeValue(payload); 
+                statusEl.textContent = 'Config Updated';
+            } catch(e) { statusEl.textContent = 'Failed: ' + e; }
+        }
+
+        function handleStateUpdate(event) {
+            const view = event.target.value;
+            const id = view.getUint8(0);
+            const state = view.getUint8(1);
+
+            if (devices[id]) {
+                devices[id].state = state;
+                const toggleBtn = document.getElementById(`toggle-${id}`);
+                if (toggleBtn) {
+                    if (state) toggleBtn.classList.add('on');
+                    else toggleBtn.classList.remove('on');
+                }
+            }
+        }
+
+        function renderUI() {
+            deviceList.innerHTML = '';
+            for (const [id, dev] of Object.entries(devices)) {
+                const card = document.createElement('div');
+                card.className = 'device-card';
+
+                const nameEl = document.createElement('span');
+                nameEl.textContent = dev.name;
+
+                const toggleBtn = document.createElement('div');
+                toggleBtn.className = `toggle-btn ${dev.state ? 'on' : ''}`;
+                toggleBtn.id = `toggle-${id}`;
+
+                const knob = document.createElement('div');
+                knob.className = 'toggle-knob';
+
+                toggleBtn.appendChild(knob);
+
+                toggleBtn.addEventListener('click', () => {
+                    const newState = toggleBtn.classList.contains('on') ? 0 : 1;
+                    sendCommand(parseInt(id), newState);
+                });
+
+                card.appendChild(nameEl);
+                card.appendChild(toggleBtn);
+                deviceList.appendChild(card);
+            }
+        }
+
+        async function sendCommand(id, state) {
+            if (!cmdChar) return;
+            try {
+                const payload = new Uint8Array([id, state]);
+                await cmdChar.writeValue(payload);
+                const toggleBtn = document.getElementById(`toggle-${id}`);
+                if (state) toggleBtn.classList.add('on');
+                else toggleBtn.classList.remove('on');
+                devices[id].state = state;
+            } catch (err) {
+                console.error("Command failed", err);
+                statusEl.textContent = 'Command failed: ' + err.message;
+            }
+        }
+
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('service-worker.js')
+                .then(reg => console.log('SW registered', reg))
+                .catch(err => console.error('SW failed', err));
+        }
+    </script>
+</body>
+
+</html>
