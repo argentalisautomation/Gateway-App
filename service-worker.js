@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gateway-cache-v3';
+const CACHE_NAME = 'gateway-cache-v4';
 const urlsToCache = [
   './index.html',
   './manifest.json',

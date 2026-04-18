@@ -151,6 +151,13 @@
         
         .calib-btn { background-color: #555; padding: 10px; font-size: 14px; margin-bottom: 10px; }
         
+        
+        .radar-settings { display: none; width: 100%; margin-top: 15px; border-top: 1px solid #444; padding-top: 15px; }
+        .radar-settings .setting-item { margin-bottom: 5px; }
+        .gate-slider-container { display: flex; flex-direction: column; width: 100%; margin-top: 10px; border-top: 1px solid #444; padding-top: 10px; }
+        .gate-slider-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 5px; font-size: 12px; }
+        .gate-slider-row input[type=range] { flex: 1; margin: 0 10px; }
+        .gate-slider-row span { width: 20px; text-align: center; }
         /* Bar Chart CSS */
         .chart-container { display: none; width: 100%; margin-top: 15px; }
         .chart-row { display: flex; align-items: flex-end; height: 60px; gap: 2px; margin-bottom: 10px; border-bottom: 1px solid #444; position: relative; }
@@ -198,7 +205,7 @@
         let cmdChar;
         let configChar;
         let devices = {};
-        let configs = { offsets: [50,50,50,50,50,50], iir: 10, debounce: 500 };
+        let configs = { offsets: [50,50,50,50,50,50], iir: 10, debounce: 500, radMin: 0, radMax: 15, radTout: 5, radMt: Array(16).fill(40), radSt: Array(16).fill(40) };
 
         const statusEl = document.getElementById('status');
         const connectBtn = document.getElementById('connectBtn');
@@ -288,6 +295,16 @@
             }
             configs.iir = view.getUint32(12, true);
             configs.debounce = view.getUint32(16, true);
+            
+            if (view.byteLength >= 56) {
+                configs.radMin = view.getUint8(20);
+                configs.radMax = view.getUint8(21);
+                configs.radTout = view.getUint16(22, true);
+                for(let i=0; i<16; i++) {
+                    configs.radMt[i] = view.getUint8(24 + i);
+                    configs.radSt[i] = view.getUint8(40 + i);
+                }
+            }
             renderSettings();
             settingsPanel.style.display = 'block';
         }
@@ -407,7 +424,55 @@
             document.getElementById('calib-container').style.display = calibMode ? 'block' : 'none';
         }
 
-        function renderUI() {
+        
+        function toggleRadarSettings() {
+            const el = document.getElementById('radar-settings-panel');
+            if(el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+        }
+
+        async function saveRadarTimeout() {
+            if (!configChar) return;
+            const val = parseInt(document.getElementById('radToutInput').value);
+            const payload = new Uint8Array(3);
+            payload[0] = 4;
+            new DataView(payload.buffer).setUint16(1, val, true);
+            try { await configChar.writeValue(payload); statusEl.textContent = 'Config Updated'; } catch(e) { }
+        }
+
+        async function saveRadarGates() {
+            if (!configChar) return;
+            const payload = new Uint8Array(3);
+            payload[0] = 5;
+            payload[1] = parseInt(document.getElementById('radMinInput').value);
+            payload[2] = parseInt(document.getElementById('radMaxInput').value);
+            try { await configChar.writeValue(payload); statusEl.textContent = 'Config Updated'; } catch(e) { }
+        }
+
+        async function saveRadarMoveThresh() {
+            if (!configChar) return;
+            const payload = new Uint8Array(17);
+            payload[0] = 6;
+            for(let i=0; i<16; i++) {
+                payload[i+1] = document.getElementById(`radMt${i}`).value;
+            }
+            try { await configChar.writeValue(payload); statusEl.textContent = 'Config Updated'; } catch(e) { }
+        }
+        
+        async function saveRadarStillThresh() {
+            if (!configChar) return;
+            const payload = new Uint8Array(17);
+            payload[0] = 7;
+            for(let i=0; i<16; i++) {
+                payload[i+1] = document.getElementById(`radSt${i}`).value;
+            }
+            try { await configChar.writeValue(payload); statusEl.textContent = 'Config Updated'; } catch(e) { }
+        }
+
+        function updateSliderLabel(id, val) {
+            document.getElementById(id + '-val').textContent = val;
+        }
+
+                function renderUI() {
             deviceList.innerHTML = '';
             for (const [id, dev] of Object.entries(devices)) {
                 if (dev.type === 2) { // Radar
@@ -419,13 +484,49 @@
                         <div style="font-size:12px; margin-bottom:5px; color:#aaa;">Moving Energy</div>
                         <div class="chart-row">`;
                     for(let i=0; i<16; i++) {
-                        chartHTML += `<div style="flex:1;"><div class="chart-bar" id="mbar-${i}" style="height:5%;"><span>0</span></div><div class="chart-label">${i}</div></div>`;
+                        chartHTML += `<div style="flex:1; position:relative;"><div class="chart-bar" id="mbar-${i}" style="height:5%;"><span>0</span></div><div class="chart-label">${i}</div><div id="mthresh-${i}" style="position:absolute; bottom:${configs.radMt[i]}%; left:0; right:0; height:2px; background:red; z-index:10;"></div></div>`;
                     }
                     chartHTML += `</div><div style="font-size:12px; margin-bottom:5px; color:#aaa;">Still Energy</div><div class="chart-row">`;
                     for(let i=0; i<16; i++) {
-                        chartHTML += `<div style="flex:1;"><div class="chart-bar" id="sbar-${i}" style="height:5%; background-color:#ff9500;"><span>0</span></div><div class="chart-label">${i}</div></div>`;
+                        chartHTML += `<div style="flex:1; position:relative;"><div class="chart-bar" id="sbar-${i}" style="height:5%; background-color:#ff9500;"><span>0</span></div><div class="chart-label">${i}</div><div id="sthresh-${i}" style="position:absolute; bottom:${configs.radSt[i]}%; left:0; right:0; height:2px; background:red; z-index:10;"></div></div>`;
                     }
-                    chartHTML += `</div></div>`;
+                    chartHTML += `</div>
+                        <button class="calib-btn" onclick="toggleRadarSettings()" style="margin-top:10px;">⚙️ Configuration Settings</button>
+                        <div class="radar-settings" id="radar-settings-panel">
+                            <div class="setting-item">
+                                <label>Timeout (s):</label>
+                                <input type="number" id="radToutInput" value="${configs.radTout}" style="width:50px;">
+                                <button onclick="saveRadarTimeout()">Save</button>
+                            </div>
+                            <div class="setting-item">
+                                <label>Min Gate (0-15):</label>
+                                <input type="number" id="radMinInput" value="${configs.radMin}" min="0" max="15" style="width:40px;">
+                            </div>
+                            <div class="setting-item">
+                                <label>Max Gate (0-15):</label>
+                                <input type="number" id="radMaxInput" value="${configs.radMax}" min="0" max="15" style="width:40px;">
+                                <button onclick="saveRadarGates()">Save</button>
+                            </div>
+                            <div class="gate-slider-container">
+                                <strong>Moving Thresholds</strong>
+                                <div style="display:flex; flex-wrap:wrap; gap:5px; margin-bottom:10px;">
+                    `;
+                    for(let i=0; i<16; i++) {
+                        chartHTML += `<div style="width:100%; display:flex; align-items:center; font-size:10px;">Gate ${i}: <input type="range" id="radMt${i}" value="${configs.radMt[i]}" min="0" max="100" style="flex:1;" oninput="updateSliderLabel('radMt${i}', this.value)"><span id="radMt${i}-val">${configs.radMt[i]}</span></div>`;
+                    }
+                    chartHTML += `      </div><button onclick="saveRadarMoveThresh()">Save Moving Thresholds</button>
+                            </div>
+                            <div class="gate-slider-container">
+                                <strong>Still Thresholds</strong>
+                                <div style="display:flex; flex-wrap:wrap; gap:5px; margin-bottom:10px;">
+                    `;
+                    for(let i=0; i<16; i++) {
+                        chartHTML += `<div style="width:100%; display:flex; align-items:center; font-size:10px;">Gate ${i}: <input type="range" id="radSt${i}" value="${configs.radSt[i]}" min="0" max="100" style="flex:1;" oninput="updateSliderLabel('radSt${i}', this.value)"><span id="radSt${i}-val">${configs.radSt[i]}</span></div>`;
+                    }
+                    chartHTML += `      </div><button onclick="saveRadarStillThresh()">Save Still Thresholds</button>
+                            </div>
+                        </div>
+                    </div>`;
 
                     card.innerHTML = `
                         <div class="radar-header">
