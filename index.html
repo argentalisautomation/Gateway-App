@@ -383,7 +383,6 @@
 
         function handleRadarUpdate(event) {
             const view = event.target.value;
-            // Struct: uint8 presence(0), uint16 distance(1-2), uint16[16] gate_energy(3-34)
             const presence = view.getUint8(0);
             const dist = view.getUint16(1, true);
             
@@ -402,20 +401,19 @@
             }
 
             if(calibMode) {
-                // 16 gate energies are uint16 LE starting at byte 3
-                let maxEnergy = 1; // avoid div-by-zero
-                const energies = [];
                 for(let i=0; i<16; i++) {
-                    const e = view.getUint16(3 + i*2, true);
-                    energies.push(e);
-                    if(e > maxEnergy) maxEnergy = e;
-                }
-                for(let i=0; i<16; i++) {
-                    const pct = Math.max((energies[i] / maxEnergy) * 100, 2);
+                    const moveE = view.getUint8(5 + i);
+                    const stillE = view.getUint8(21 + i);
+                    
                     const mBar = document.getElementById(`mbar-${i}`);
+                    const sBar = document.getElementById(`sbar-${i}`);
                     if(mBar) {
-                        mBar.style.height = pct + '%';
-                        mBar.querySelector('span').textContent = energies[i];
+                        mBar.style.height = Math.max(moveE, 5) + '%';
+                        mBar.querySelector('span').textContent = moveE;
+                    }
+                    if(sBar) {
+                        sBar.style.height = Math.max(stillE, 5) + '%';
+                        sBar.querySelector('span').textContent = stillE;
                     }
                 }
             }
