@@ -391,6 +391,15 @@
             if(card) {
                 const statusEl = card.querySelector('.radar-status');
                 const distEl = card.querySelector('.radar-dist');
+                const debugEl = document.getElementById('frontendDebug');
+
+                if(debugEl) {
+                    const now = new Date().toLocaleTimeString();
+                    debugEl.innerHTML = `[${now}] Len: ${view.byteLength}b, Pres: ${presence}, Dist: ${dist}<br>` + debugEl.innerHTML;
+                    // Keep log from getting too huge
+                    if(debugEl.innerHTML.length > 2000) debugEl.innerHTML = debugEl.innerHTML.substring(0, 2000);
+                }
+
                 if(presence > 0) {
                     card.classList.add('presence');
                     statusEl.textContent = 'Presence Detected';
@@ -530,10 +539,11 @@
 
                     card.innerHTML = `
                         <div class="radar-header">
-                            <span>${dev.name} <span style="font-size: 0.6em; color: #888;">v0.02</span></span>
+                            <span>${dev.name} <span style="font-size: 0.6em; color: #888;">v0.03</span></span>
                             <span class="radar-status">Clear</span>
                         </div>
                         <div class="radar-dist"></div>
+                        <div id="frontendDebug" style="width:100%; height:80px; overflow-y:auto; background:#111; color:#0f0; font-family:monospace; font-size:10px; margin-top:10px; padding:5px; box-sizing:border-box;">[DEBUG LOG] Waiting for data...</div>
                         <button class="calib-btn" onclick="toggleCalib()">Toggle Calibration View</button>
                         ${chartHTML}
                     `;
