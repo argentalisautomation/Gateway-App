@@ -168,7 +168,7 @@
 </head>
 
 <body>
-    <h1>ESP-NOW Gateway <span style="font-size: 0.5em; color: #888;">v0.01</span></h1>
+    <h1>ESP-NOW Gateway</h1>
     <button id="connectBtn">Connect Bluetooth</button>
     <div id="deviceList"></div>
     
@@ -530,7 +530,7 @@
 
                     card.innerHTML = `
                         <div class="radar-header">
-                            <span>${dev.name}</span>
+                            <span>${dev.name} <span style="font-size: 0.6em; color: #888;">v0.01</span></span>
                             <span class="radar-status">Clear</span>
                         </div>
                         <div class="radar-dist"></div>
