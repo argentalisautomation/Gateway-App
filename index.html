@@ -60,7 +60,10 @@
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        .main-btn:active { transform: scale(0.96); opacity: 0.9; }
+        .main-btn:active {
+            transform: scale(0.96);
+            opacity: 0.9;
+        }
 
         .device-card {
             background: var(--card-bg);
@@ -86,10 +89,12 @@
             position: relative;
             cursor: pointer;
             transition: all 0.3s ease;
-            box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
         }
 
-        .toggle-btn.on { background: linear-gradient(135deg, #34c759, #30d158); }
+        .toggle-btn.on {
+            background: linear-gradient(135deg, #34c759, #30d158);
+        }
 
         .toggle-knob {
             width: 28px;
@@ -100,10 +105,12 @@
             top: 3px;
             left: 3px;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
         }
 
-        .toggle-btn.on .toggle-knob { transform: translateX(30px); }
+        .toggle-btn.on .toggle-knob {
+            transform: translateX(30px);
+        }
 
         .radar-card {
             background: var(--card-bg);
@@ -121,29 +128,44 @@
             transition: all 0.5s ease;
         }
 
-        .radar-card.presence { 
+        .radar-card.presence {
             border-color: var(--presence);
             box-shadow: 0 0 20px rgba(255, 77, 77, 0.15);
         }
 
-        .radar-header { 
-            display: flex; 
-            justify-content: space-between; 
+        .radar-header {
+            display: flex;
+            justify-content: space-between;
             align-items: center;
-            width: 100%; 
-            margin-bottom: 10px; 
+            width: 100%;
+            margin-bottom: 10px;
         }
 
-        .radar-title { font-weight: 600; font-size: 20px; }
-        .radar-status { font-weight: 600; color: #34c759; }
-        .radar-card.presence .radar-status { color: var(--presence); }
-        .radar-dist { font-size: 16px; color: var(--text-dim); margin-bottom: 20px; }
+        .radar-title {
+            font-weight: 600;
+            font-size: 20px;
+        }
+
+        .radar-status {
+            font-weight: 600;
+            color: #34c759;
+        }
+
+        .radar-card.presence .radar-status {
+            color: var(--presence);
+        }
+
+        .radar-dist {
+            font-size: 16px;
+            color: var(--text-dim);
+            margin-bottom: 20px;
+        }
 
         .debug-box {
             width: 100%;
             height: 70px;
             overflow-y: auto;
-            background: rgba(0,0,0,0.4);
+            background: rgba(0, 0, 0, 0.4);
             border-radius: 12px;
             color: #00ff00;
             font-family: monospace;
@@ -151,38 +173,45 @@
             padding: 8px;
             box-sizing: border-box;
             margin-bottom: 15px;
-            border: 1px solid rgba(255,255,255,0.05);
+            border: 1px solid rgba(255, 255, 255, 0.05);
         }
 
-        .chart-container { margin-top: 10px; }
-        .chart-row { 
-            display: flex; 
-            align-items: flex-end; 
-            height: 80px; 
-            gap: 3px; 
-            margin-bottom: 20px; 
+        .chart-container {
+            margin-top: 10px;
+        }
+
+        .chart-row {
+            display: flex;
+            align-items: flex-end;
+            height: 80px;
+            gap: 3px;
+            margin-bottom: 20px;
             padding-bottom: 5px;
             border-bottom: 1px solid var(--glass-border);
         }
 
-        .chart-bar { 
-            flex: 1; 
-            background: linear-gradient(to top, #007aff, var(--accent)); 
-            border-radius: 4px 4px 0 0; 
+        .chart-bar {
+            flex: 1;
+            background: linear-gradient(to top, #007aff, var(--accent));
+            border-radius: 4px 4px 0 0;
             transition: height 0.15s cubic-bezier(0.17, 0.67, 0.83, 0.67);
             position: relative;
         }
 
-        .chart-bar span { 
-            position: absolute; 
-            top: -14px; 
-            left: 50%; 
+        .chart-bar span {
+            position: absolute;
+            top: -14px;
+            left: 50%;
             transform: translateX(-50%);
-            font-size: 8px; 
+            font-size: 8px;
             font-weight: 600;
         }
 
-        .chart-label { font-size: 9px; color: var(--text-dim); text-align: center; }
+        .chart-label {
+            font-size: 9px;
+            color: var(--text-dim);
+            text-align: center;
+        }
 
         .settings-panel {
             background: var(--glass);
@@ -201,13 +230,17 @@
             margin-bottom: 15px;
         }
 
-        .setting-item label { font-size: 14px; color: var(--text-dim); }
+        .setting-item label {
+            font-size: 14px;
+            color: var(--text-dim);
+        }
+
         .setting-item input {
             width: 70px;
             padding: 8px;
-            background: rgba(255,255,255,0.05);
+            background: rgba(255, 255, 255, 0.05);
             color: white;
-            border: 1px solid rgba(255,255,255,0.1);
+            border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 10px;
             text-align: center;
         }
@@ -242,15 +275,23 @@
             text-transform: uppercase;
             letter-spacing: 1px;
         }
+
+        .mode-badge {
+            font-size: 10px;
+            padding: 3px 8px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-dim);
+        }
     </style>
 </head>
 
 <body>
     <h1>LD2420 Gateway</h1>
     <button id="connectBtn" class="main-btn">Connect Radar</button>
-    
+
     <div id="deviceList" style="width: 100%; display: flex; flex-direction: column; align-items: center;"></div>
-    
+
     <div id="settingsPanel" class="settings-panel" style="display: none;">
         <h3 style="margin: 0 0 15px 0;">System Settings</h3>
         <div class="setting-item">
@@ -271,22 +312,39 @@
     <button class="nuclear-btn" onclick="nuclearReset()">☢️ FORCE APP UPDATE & RELOAD</button>
 
     <script>
+        const APP_VERSION = 'v0.06';
         const SERVICE_UUID = '12345678-1234-5678-1234-56789abcdef0';
-        const ROSTER_UUID  = '12345678-1234-5678-1234-56789abcdef1';
-        const CMD_UUID     = '12345678-1234-5678-1234-56789abcdef2';
-        const STATE_UUID   = '12345678-1234-5678-1234-56789abcdef3';
-        const CONFIG_UUID  = '12345678-1234-5678-1234-56789abcdef4';
-        const LD2420_UUID  = '12345678-1234-5678-1234-56789abcdef5';
+        const ROSTER_UUID = '12345678-1234-5678-1234-56789abcdef1';
+        const CMD_UUID = '12345678-1234-5678-1234-56789abcdef2';
+        const STATE_UUID = '12345678-1234-5678-1234-56789abcdef3';
+        const CONFIG_UUID = '12345678-1234-5678-1234-56789abcdef4';
+        const LD2420_UUID = '12345678-1234-5678-1234-56789abcdef5';
 
-        let bleDevice, gattServer, cmdChar, configChar, rosterChar, stateChar;
+        let bleDevice, gattServer, cmdChar, configChar, rosterChar, stateChar, radarChar;
         let devices = {};
-        let configs = { offsets: [50,50,50,50,50,50], iir: 10, debounce: 500, radMin: 0, radMax: 15, radTout: 5, radMt: Array(16).fill(40), radSt: Array(16).fill(40) };
+        let configs = { offsets: [50, 50, 50, 50, 50, 50], iir: 10, debounce: 500, radMin: 0, radMax: 15, radTout: 5, radMt: Array(16).fill(40), radSt: Array(16).fill(40) };
         let calibMode = false;
+        let pollTimer = null;
+        let usePollingFallback = false;
 
         const statusEl = document.getElementById('status');
         const connectBtn = document.getElementById('connectBtn');
         const deviceList = document.getElementById('deviceList');
         const settingsPanel = document.getElementById('settingsPanel');
+
+        function debugLog(msg) {
+            const debugEl = document.getElementById('frontendDebug');
+            if (!debugEl) return;
+            const now = new Date().toLocaleTimeString();
+            debugEl.innerHTML = `[${now}] ${msg}<br>` + debugEl.innerHTML;
+            if (debugEl.innerHTML.length > 3000) debugEl.innerHTML = debugEl.innerHTML.substring(0, 3000);
+        }
+
+        // Detect if running as installed PWA (standalone mode)
+        function isStandalonePWA() {
+            return window.matchMedia('(display-mode: standalone)').matches ||
+                window.navigator.standalone === true;
+        }
 
         async function nuclearReset() {
             if (!confirm("This will clear all local app cache and force a complete reload. Use this if your phone is stuck on an old version. Proceed?")) return;
@@ -328,14 +386,27 @@
                 const rosterValue = await rosterChar.readValue();
                 parseRoster(rosterValue.buffer);
 
+                // Subscribe to state notifications (for relay toggles)
                 await stateChar.startNotifications();
                 stateChar.addEventListener('characteristicvaluechanged', handleStateUpdate);
 
+                // Try to get radar characteristic - it's optional
                 try {
-                    const radarChar = await service.getCharacteristic(LD2420_UUID);
+                    radarChar = await service.getCharacteristic(LD2420_UUID);
                     await radarChar.startNotifications();
                     radarChar.addEventListener('characteristicvaluechanged', handleRadarUpdate);
-                } catch(e) { console.log('Radar char not found'); }
+
+                    // PHONE FIX: Always enable polling as a backup since BLE notifications
+                    // are unreliable on Android phones for high-frequency data (~5Hz radar updates).
+                    // Toggle switches use low-frequency (event-driven) notifications so they work fine,
+                    // but the radar needs a continuous data stream and Android's Web Bluetooth
+                    // frequently drops characteristicvaluechanged events for fast data.
+                    debugLog('PHONE FIX: Enabling polling fallback for reliable radar data');
+                    usePollingFallback = true;
+                    startPollingFallback();
+                } catch (e) {
+                    debugLog('Radar characteristic not found on this device');
+                }
 
                 statusEl.textContent = 'Dashboard Active';
                 connectBtn.style.display = 'none';
@@ -345,12 +416,52 @@
             }
         });
 
+        // Polling fallback: Poll radar directly since BLE notifications are unreliable on Android
+        // for high-frequency data streams (~5Hz radar). Uses 300ms interval to ensure we
+        // catch all data frames even if some readValue() calls fail.
+        let pollFailCount = 0;
+        let pollOkCount = 0;
+
+        function startPollingFallback() {
+            if (pollTimer) clearInterval(pollTimer);
+            pollTimer = setInterval(async () => {
+                if (!radarChar || !gattServer || !gattServer.connected) {
+                    clearInterval(pollTimer);
+                    pollTimer = null;
+                    return;
+                }
+                try {
+                    const value = await radarChar.readValue();
+                    pollOkCount++;
+                    if (pollOkCount === 1 || pollOkCount % 50 === 0) {
+                        debugLog(`POLL OK #${pollOkCount} (${value.byteLength}B)`);
+                    }
+                    handleRadarUpdate({ target: { value } });
+                } catch (e) {
+                    pollFailCount++;
+                    // Log first few failures, then only every 10th
+                    if (pollFailCount <= 3 || pollFailCount % 10 === 0) {
+                        debugLog(`POLL FAIL #${pollFailCount}: ${e.message}`);
+                    }
+                }
+            }, 300);
+        }
+
+        function stopPollingFallback() {
+            if (pollTimer) {
+                clearInterval(pollTimer);
+                pollTimer = null;
+            }
+        }
+
         function onDisconnected() {
             statusEl.textContent = 'Disconnected';
             connectBtn.style.display = 'block';
             deviceList.innerHTML = '';
             settingsPanel.style.display = 'none';
             devices = {};
+            stopPollingFallback();
+            usePollingFallback = false;
         }
 
         function parseRoster(buffer) {
@@ -377,7 +488,7 @@
                 configs.radMin = view.getUint8(20);
                 configs.radMax = view.getUint8(21);
                 configs.radTout = view.getUint16(22, true);
-                for(let i=0; i<16; i++) {
+                for (let i = 0; i < 16; i++) {
                     configs.radMt[i] = view.getUint8(24 + i);
                     configs.radSt[i] = view.getUint8(40 + i);
                 }
@@ -394,7 +505,7 @@
             for (let i = 0; i < 6; i++) {
                 const div = document.createElement('div');
                 div.className = 'setting-item';
-                div.innerHTML = `<label>S${i+1} Offset</label><input type="number" id="offIn${i}" value="${configs.offsets[i]}"><button class="mini-btn" onclick="saveOffset(${i+1})">Save</button>`;
+                div.innerHTML = `<label>S${i + 1} Offset</label><input type="number" id="offIn${i}" value="${configs.offsets[i]}"><button class="mini-btn" onclick="saveOffset(${i + 1})">Save</button>`;
                 container.appendChild(div);
             }
         }
@@ -418,7 +529,7 @@
         }
 
         async function saveOffset(id) {
-            const val = parseInt(document.getElementById(`offIn${id-1}`).value);
+            const val = parseInt(document.getElementById(`offIn${id - 1}`).value);
             const payload = new Uint8Array(4);
             payload[0] = 1; payload[1] = id;
             new DataView(payload.buffer).setUint16(2, val, true);
@@ -439,36 +550,42 @@
 
         function handleRadarUpdate(event) {
             const view = event.target.value;
+            if (!view || view.byteLength < 3) {
+                debugLog('Bad radar packet: ' + (view ? view.byteLength + ' bytes' : 'null'));
+                return;
+            }
+
             const presence = view.getUint8(0);
             const dist = view.getUint16(1, true);
             const card = document.getElementById('radar-card');
-            if(!card) return;
+            if (!card) return;
 
-            const debugEl = document.getElementById('frontendDebug');
-            if(debugEl) {
-                const now = new Date().toLocaleTimeString();
-                debugEl.innerHTML = `[${now}] Received ${view.byteLength}b | Pres: ${presence} | Dist: ${dist}<br>` + debugEl.innerHTML;
-                if(debugEl.innerHTML.length > 2000) debugEl.innerHTML = debugEl.innerHTML.substring(0, 2000);
+            // Log mode + data to debug
+            const modeTag = usePollingFallback ? '[POLL]' : '[NOTIFY]';
+            let gateStr = '';
+            for (let i = 3; i < view.byteLength && i < 19; i++) {
+                gateStr += view.getUint8(i) + ' ';
             }
+            debugLog(`${modeTag} ${view.byteLength}B | P:${presence} D:${dist}cm G:${gateStr}`);
 
             const statusEl = card.querySelector('.radar-status');
             const distEl = card.querySelector('.radar-dist');
-            if(presence) {
+            if (presence) {
                 card.classList.add('presence');
                 statusEl.textContent = 'PRESENCE DETECTED';
             } else {
                 card.classList.remove('presence');
                 statusEl.textContent = 'CLEAR';
             }
-            distEl.textContent = (dist > 0 && dist < 1500) ? (dist/100).toFixed(2) + ' Meters' : '--';
+            distEl.textContent = (dist > 0 && dist < 1500) ? (dist / 100).toFixed(2) + ' Meters' : '--';
 
-            if(calibMode) {
-                for(let i=0; i<16; i++) {
-                    const energy = (3+i < view.byteLength) ? view.getUint8(3+i) : 0;
+            if (calibMode) {
+                for (let i = 0; i < 16; i++) {
+                    const energy = (3 + i < view.byteLength) ? view.getUint8(3 + i) : 0;
                     const mBar = document.getElementById(`mbar-${i}`);
                     const sBar = document.getElementById(`sbar-${i}`);
-                    if(mBar) { mBar.style.height = Math.max(energy, 5) + '%'; mBar.querySelector('span').textContent = energy; }
-                    if(sBar) { sBar.style.height = Math.max(energy, 5) + '%'; sBar.querySelector('span').textContent = energy; }
+                    if (mBar) { mBar.style.height = Math.max(energy, 5) + '%'; mBar.querySelector('span').textContent = energy; }
+                    if (sBar) { sBar.style.height = Math.max(energy, 5) + '%'; sBar.querySelector('span').textContent = energy; }
                 }
             }
         }
@@ -476,6 +593,7 @@
         function toggleCalib() {
             calibMode = !calibMode;
             document.getElementById('calib-container').style.display = calibMode ? 'block' : 'none';
+            debugLog(calibMode ? 'Calibration view ON' : 'Calibration view OFF');
         }
 
         function renderUI() {
@@ -485,19 +603,22 @@
                     const card = document.createElement('div');
                     card.className = 'radar-card';
                     card.id = 'radar-card';
-                    
+
                     let chartHTML = `<div class="chart-container" id="calib-container" style="display:none;">
-                        <div style="font-size:11px; margin-bottom:5px; color:var(--text-dim);">Moving Energy</div>
+                        <div style="font-size:11px; margin-bottom:5px; color:var(--text-dim);">Energy Levels</div>
                         <div class="chart-row">`;
-                    for(let i=0; i<16; i++) chartHTML += `<div style="flex:1; position:relative;"><div class="chart-bar" id="mbar-${i}" style="height:5%;"><span>0</span></div><div class="chart-label">${i}</div></div>`;
-                    chartHTML += `</div><div style="font-size:11px; margin-bottom:5px; color:var(--text-dim);">Still Energy</div><div class="chart-row">`;
-                    for(let i=0; i<16; i++) chartHTML += `<div style="flex:1; position:relative;"><div class="chart-bar" id="sbar-${i}" style="height:5%; background:linear-gradient(to top, #ff9500, #ffcc00);"><span>0</span></div><div class="chart-label">${i}</div></div>`;
+                    for (let i = 0; i < 16; i++) chartHTML += `<div style="flex:1; position:relative;"><div class="chart-bar" id="mbar-${i}" style="height:5%;"><span>0</span></div><div class="chart-label">${i}</div></div>`;
                     chartHTML += `</div></div>`;
+
+                    const modeBadge = isStandalonePWA() ? '<span class="mode-badge">PWA</span>' : '<span class="mode-badge">BROWSER</span>';
 
                     card.innerHTML = `
                         <div class="radar-header">
-                            <span class="radar-title">${dev.name} <span style="font-size:10px; opacity:0.5;">v0.04</span></span>
-                            <span class="radar-status">WAITING</span>
+                            <span class="radar-title">${dev.name} <span style="font-size:10px; opacity:0.5;">${APP_VERSION}</span></span>
+                            <span style="display:flex; align-items:center; gap:8px;">
+                                ${modeBadge}
+                                <span class="radar-status">WAITING</span>
+                            </span>
                         </div>
                         <div class="radar-dist">--</div>
                         <div id="frontendDebug" class="debug-box">Initializing Debug Stream...</div>
@@ -505,6 +626,7 @@
                         ${chartHTML}
                     `;
                     deviceList.prepend(card);
+                    debugLog('Radar UI rendered. Mode: ' + (isStandalonePWA() ? 'PWA' : 'Browser'));
                 } else if (dev.type === 1) {
                     const card = document.createElement('div');
                     card.className = 'device-card';
@@ -522,19 +644,23 @@
             newState ? btn.classList.add('on') : btn.classList.remove('on');
         }
 
+        // Service worker registration - use updateViaCache to prevent caching issues
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('service-worker.js')
+            navigator.serviceWorker.register('service-worker.js', { updateViaCache: 'none' })
                 .then(reg => {
                     reg.onupdatefound = () => {
                         const installingWorker = reg.installing;
                         installingWorker.onstatechange = () => {
                             if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                                if(confirm("New version available! Reload now?")) window.location.reload();
+                                if (confirm("New version available! Reload now?")) window.location.reload();
                             }
                         };
                     };
                 });
         }
+
+        // Log startup info
+        console.log('Gateway v' + APP_VERSION + ' | Mode: ' + (isStandalonePWA() ? 'PWA Standalone' : 'Browser Tab'));
     </script>
 </body>
 
