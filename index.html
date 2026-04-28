@@ -390,22 +390,44 @@
                 await stateChar.startNotifications();
                 stateChar.addEventListener('characteristicvaluechanged', handleStateUpdate);
 
-                // Try to get radar characteristic - it's optional
+                // PHONE FIX: Get radar characteristic by enumerating ALL characteristics,
+                // since Android Web Bluetooth getCharacteristic(UUID) frequently fails for
+                // non-primary characteristics due to a caching bug in the Android BLE stack.
+                // Using getCharacteristics() forces a fresh fetch of the full attribute list.
                 try {
-                    radarChar = await service.getCharacteristic(LD2420_UUID);
-                    await radarChar.startNotifications();
-                    radarChar.addEventListener('characteristicvaluechanged', handleRadarUpdate);
+                    // Enumerate ALL characteristics and find the radar one by UUID
+                    const allChars = await service.getCharacteristics();
+                    debugLog(`Discovering ${allChars.length} characteristics...`);
+                    let foundRadar = false;
+                    for (const ch of allChars) {
+                        debugLog(`Found char: ${ch.uuid}`);
+                        if (ch.uuid.toUpperCase() === LD2420_UUID.toUpperCase()) {
+                            radarChar = ch;
+                            foundRadar = true;
+                            debugLog('✓ Matched LD2420 radar characteristic!');
+                            break;
+                        }
+                    }
 
-                    // PHONE FIX: Always enable polling as a backup since BLE notifications
-                    // are unreliable on Android phones for high-frequency data (~5Hz radar updates).
-                    // Toggle switches use low-frequency (event-driven) notifications so they work fine,
-                    // but the radar needs a continuous data stream and Android's Web Bluetooth
-                    // frequently drops characteristicvaluechanged events for fast data.
-                    debugLog('PHONE FIX: Enabling polling fallback for reliable radar data');
-                    usePollingFallback = true;
-                    startPollingFallback();
+                    if (foundRadar && radarChar) {
+                        // Subscribe to notifications as a bonus
+                        try {
+                            await radarChar.startNotifications();
+                            radarChar.addEventListener('characteristicvaluechanged', handleRadarUpdate);
+                            debugLog('Radar notifications subscribed');
+                        } catch (e2) {
+                            debugLog('Notifications not supported for radar char, using polling only');
+                        }
+
+                        // ALWAYS enable polling - notifications are unreliable on phones
+                        debugLog('Starting radar polling (300ms) for reliable phone data');
+                        usePollingFallback = true;
+                        startPollingFallback();
+                    } else {
+                        debugLog('ERROR: LD2420 radar characteristic UUID not found in service!');
+                    }
                 } catch (e) {
-                    debugLog('Radar characteristic not found on this device');
+                    debugLog('Radar enumeration failed: ' + e.message);
                 }
 
                 statusEl.textContent = 'Dashboard Active';
