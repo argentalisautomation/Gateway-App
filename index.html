@@ -283,6 +283,53 @@
             background: rgba(255, 255, 255, 0.05);
             color: var(--text-dim);
         }
+
+        /* v2 Radar Card — New Production Display */
+        .radar-card-v2 {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            padding: 24px;
+            border-radius: 32px;
+            margin-bottom: 25px;
+            width: 100%;
+            max-width: 360px;
+            box-sizing: border-box;
+            border: 1px solid var(--glass-border);
+            transition: all 0.5s ease;
+        }
+
+        .radar-card-v2.presence {
+            border-color: var(--presence);
+            box-shadow: 0 0 20px rgba(255, 77, 77, 0.15);
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 12px;
+        }
+
+        .info-item {
+            background: var(--glass);
+            border-radius: 16px;
+            padding: 14px;
+            border: 1px solid var(--glass-border);
+        }
+
+        .info-label {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.7);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .info-value {
+            font-size: 22px;
+            font-weight: 600;
+            margin-top: 4px;
+        }
     </style>
 </head>
 
@@ -577,37 +624,54 @@
                 return;
             }
 
-            const presence = view.getUint8(0);
-            const dist = view.getUint16(1, true);
+            // v2 flags-based struct: 0=flags, 1=bucket, 2-3=distance, 4-19=gate_energy
+            const flags = view.getUint8(0);
+            const presence = flags & 0x01;
+            const fan_active = (flags >> 1) & 0x01;
+            const bucket = view.getUint8(1);
+            const dist = view.getUint16(2, true);
             const card = document.getElementById('radar-card');
             if (!card) return;
 
-            // Log mode + data to debug
             const modeTag = usePollingFallback ? '[POLL]' : '[NOTIFY]';
-            let gateStr = '';
-            for (let i = 3; i < view.byteLength && i < 19; i++) {
-                gateStr += view.getUint8(i) + ' ';
-            }
-            debugLog(`${modeTag} ${view.byteLength}B | P:${presence} D:${dist}cm G:${gateStr}`);
+            debugLog(`${modeTag} ${view.byteLength}B | F:0x${flags.toString(16)} B:${bucket} D:${dist}cm`);
 
-            const statusEl = card.querySelector('.radar-status');
-            const distEl = card.querySelector('.radar-dist');
+            // Presence
+            const statusEl = document.getElementById('radar-status');
+            const presenceEl = document.getElementById('radar-presence');
             if (presence) {
                 card.classList.add('presence');
+                presenceEl.textContent = 'Detected';
+                presenceEl.style.color = 'var(--presence)';
                 statusEl.textContent = 'PRESENCE DETECTED';
             } else {
                 card.classList.remove('presence');
+                presenceEl.textContent = 'Clear';
+                presenceEl.style.color = '#34c759';
                 statusEl.textContent = 'CLEAR';
             }
-            distEl.textContent = (dist > 0 && dist < 1500) ? (dist / 100).toFixed(2) + ' Meters' : '--';
 
+            // Fan
+            const fanEl = document.getElementById('radar-fan');
+            fanEl.textContent = fan_active ? 'Active' : 'Inactive';
+            fanEl.style.color = fan_active ? '#ff9f0a' : 'var(--text-dim)';
+
+            // Distance
+            document.getElementById('radar-dist').textContent =
+                (dist > 0 && dist < 1500) ? (dist / 100).toFixed(1) + ' m' : '--';
+
+            // Bucket No.
+            document.getElementById('radar-bucket').textContent = bucket.toString();
+
+            // Calibration bars (gate_energy starts at offset 4)
             if (calibMode) {
                 for (let i = 0; i < 16; i++) {
-                    const energy = (3 + i < view.byteLength) ? view.getUint8(3 + i) : 0;
-                    const mBar = document.getElementById(`mbar-${i}`);
-                    const sBar = document.getElementById(`sbar-${i}`);
-                    if (mBar) { mBar.style.height = Math.max(energy, 5) + '%'; mBar.querySelector('span').textContent = energy; }
-                    if (sBar) { sBar.style.height = Math.max(energy, 5) + '%'; sBar.querySelector('span').textContent = energy; }
+                    const energy = (4 + i < view.byteLength) ? view.getUint8(4 + i) : 0;
+                    const bar = document.getElementById(`mbar-${i}`);
+                    if (bar) {
+                        bar.style.height = Math.max(energy, 5) + '%';
+                        bar.querySelector('span').textContent = energy;
+                    }
                 }
             }
         }
@@ -622,15 +686,10 @@
             deviceList.innerHTML = '';
             for (const [id, dev] of Object.entries(devices)) {
                 if (dev.type === 2) {
+                    // ========== NEW V2 RADAR DISPLAY ==========
                     const card = document.createElement('div');
-                    card.className = 'radar-card';
+                    card.className = 'radar-card-v2';
                     card.id = 'radar-card';
-
-                    let chartHTML = `<div class="chart-container" id="calib-container" style="display:none;">
-                        <div style="font-size:11px; margin-bottom:5px; color:var(--text-dim);">Energy Levels</div>
-                        <div class="chart-row">`;
-                    for (let i = 0; i < 16; i++) chartHTML += `<div style="flex:1; position:relative;"><div class="chart-bar" id="mbar-${i}" style="height:5%;"><span>0</span></div><div class="chart-label">${i}</div></div>`;
-                    chartHTML += `</div></div>`;
 
                     const modeBadge = isStandalonePWA() ? '<span class="mode-badge">PWA</span>' : '<span class="mode-badge">BROWSER</span>';
 
@@ -639,16 +698,40 @@
                             <span class="radar-title">${dev.name} <span style="font-size:10px; opacity:0.5;">${APP_VERSION}</span></span>
                             <span style="display:flex; align-items:center; gap:8px;">
                                 ${modeBadge}
-                                <span class="radar-status">WAITING</span>
+                                <span class="radar-status" id="radar-status">WAITING</span>
                             </span>
                         </div>
-                        <div class="radar-dist">--</div>
-                        <div id="frontendDebug" class="debug-box">Initializing Debug Stream...</div>
-                        <button class="mini-btn" onclick="toggleCalib()" style="width:100%; margin-bottom:10px;">Toggle Calibration View</button>
-                        ${chartHTML}
+
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <div class="info-label">Presence</div>
+                                <div class="info-value" id="radar-presence" style="color:var(--text-dim);">--</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Fan</div>
+                                <div class="info-value" id="radar-fan" style="color:var(--text-dim);">--</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Distance</div>
+                                <div class="info-value" id="radar-dist" style="color:var(--text-dim);">--</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Bucket No.</div>
+                                <div class="info-value" id="radar-bucket" style="color:var(--text-dim);">--</div>
+                            </div>
+                        </div>
+
+                        <div id="frontendDebug" class="debug-box" style="margin-top:12px;">Initializing...</div>
+                        <button class="mini-btn" onclick="toggleCalib()" style="width:100%; margin-top:10px;">Toggle Calibration View</button>
+                        <div id="calib-container" style="display:none; margin-top:10px;">
+                            <div style="font-size:11px; color:var(--text-dim);">Energy Levels</div>
+                            <div class="chart-row">${Array.from({ length: 16 }, (_, i) =>
+                        `<div style="flex:1; position:relative;"><div class="chart-bar" id="mbar-${i}" style="height:5%;"><span>0</span></div><div class="chart-label">${i}</div></div>`
+                    ).join('')}</div>
+                        </div>
                     `;
                     deviceList.prepend(card);
-                    debugLog('Radar UI rendered. Mode: ' + (isStandalonePWA() ? 'PWA' : 'Browser'));
+                    debugLog('Radar v2 UI rendered. Mode: ' + (isStandalonePWA() ? 'PWA' : 'Browser'));
                 } else if (dev.type === 1) {
                     const card = document.createElement('div');
                     card.className = 'device-card';
