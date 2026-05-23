@@ -4,768 +4,553 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Gateway Dashboard</title>
+    <title>Gateway Mesh Control</title>
     <link rel="manifest" href="manifest.json">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
             --bg: #0a0a0c;
-            --card-bg: rgba(255, 255, 255, 0.05);
+            --card-bg: rgba(255, 255, 255, 0.04);
             --accent: #00d2ff;
-            --presence: #ff4d4d;
+            --accent-glow: rgba(0, 210, 255, 0.15);
+            --green: #34c759;
             --text: #ffffff;
-            --text-dim: rgba(255, 255, 255, 0.6);
-            --glass: rgba(255, 255, 255, 0.03);
-            --glass-border: rgba(255, 255, 255, 0.1);
+            --text-dim: rgba(255, 255, 255, 0.5);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --radius: 20px;
         }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
 
         body {
             font-family: 'Outfit', sans-serif;
-            background-color: var(--bg);
+            background: var(--bg);
             color: var(--text);
-            margin: 0;
-            padding: 20px;
+            min-height: 100vh;
             display: flex;
             flex-direction: column;
             align-items: center;
-            min-height: 100vh;
-            overflow-x: hidden;
-            background: radial-gradient(circle at top right, #1a1a2e, #0a0a0c);
+            padding: 24px 16px 40px;
+            background: radial-gradient(ellipse at 20% 0%, #0f1a2e 0%, #0a0a0c 60%);
         }
 
         h1 {
-            font-weight: 600;
-            font-size: 28px;
-            margin: 10px 0 30px 0;
+            font-weight: 700;
+            font-size: 26px;
             letter-spacing: -0.5px;
-            background: linear-gradient(to right, #fff, var(--accent));
+            margin-bottom: 6px;
+            background: linear-gradient(135deg, #fff 30%, var(--accent));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
 
+        .subtitle {
+            font-size: 12px;
+            color: var(--text-dim);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-bottom: 28px;
+        }
+
+        /* --- Connect Button --- */
         .main-btn {
             background: linear-gradient(135deg, #007aff, #00d2ff);
-            color: white;
+            color: #fff;
             border: none;
-            padding: 18px 40px;
-            font-size: 18px;
+            padding: 16px 44px;
+            font-size: 17px;
             font-weight: 600;
             border-radius: 16px;
             cursor: pointer;
             width: 100%;
-            max-width: 320px;
-            box-shadow: 0 10px 20px rgba(0, 118, 255, 0.3);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            max-width: 340px;
+            box-shadow: 0 8px 24px rgba(0, 118, 255, 0.25);
+            transition: all 0.25s ease;
+            font-family: inherit;
+        }
+        .main-btn:active { transform: scale(0.96); opacity: 0.85; }
+
+        /* --- Status --- */
+        #status {
+            margin-top: 16px;
+            font-size: 11px;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
         }
 
-        .main-btn:active {
-            transform: scale(0.96);
-            opacity: 0.9;
+        /* --- Device List --- */
+        #deviceList {
+            width: 100%;
+            max-width: 380px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            margin-top: 24px;
         }
 
+        /* --- Device Card --- */
         .device-card {
             background: var(--card-bg);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius);
             padding: 20px;
-            border-radius: 24px;
-            margin-bottom: 20px;
-            width: 100%;
-            max-width: 350px;
+            animation: fadeSlideIn 0.4s ease both;
+        }
+        @keyframes fadeSlideIn {
+            from { opacity: 0; transform: translateY(12px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .device-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            box-sizing: border-box;
-            border: 1px solid var(--glass-border);
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--glass-border);
+        }
+        .device-name {
+            font-weight: 600;
+            font-size: 18px;
+        }
+        .device-badge {
+            font-size: 10px;
+            padding: 3px 10px;
+            border-radius: 8px;
+            background: rgba(0, 210, 255, 0.1);
+            color: var(--accent);
+            font-weight: 600;
+            letter-spacing: 0.5px;
         }
 
+        /* --- Switch Row --- */
+        .switch-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+        }
+        .switch-row + .switch-row {
+            border-top: 1px solid rgba(255,255,255,0.03);
+        }
+        .switch-label {
+            font-size: 15px;
+            font-weight: 400;
+            color: rgba(255,255,255,0.8);
+        }
+
+        /* --- Toggle Switch --- */
         .toggle-btn {
-            background-color: #2c2c2e;
-            width: 64px;
-            height: 34px;
-            border-radius: 20px;
+            width: 56px;
+            height: 30px;
+            border-radius: 15px;
+            background: #2c2c2e;
             position: relative;
             cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+            transition: background 0.3s ease;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.4);
+            flex-shrink: 0;
         }
-
         .toggle-btn.on {
-            background: linear-gradient(135deg, #34c759, #30d158);
+            background: linear-gradient(135deg, #30b850, #34c759);
         }
-
         .toggle-knob {
-            width: 28px;
-            height: 28px;
-            background-color: white;
+            width: 24px;
+            height: 24px;
+            background: #fff;
             border-radius: 50%;
             position: absolute;
             top: 3px;
             left: 3px;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
         }
-
         .toggle-btn.on .toggle-knob {
-            transform: translateX(30px);
+            transform: translateX(26px);
         }
 
-        .radar-card {
-            background: var(--card-bg);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            padding: 24px;
-            border-radius: 32px;
-            margin-bottom: 25px;
-            width: 100%;
-            max-width: 360px;
+        /* --- Action Buttons --- */
+        .action-bar {
             display: flex;
-            flex-direction: column;
-            box-sizing: border-box;
-            border: 1px solid var(--glass-border);
-            transition: all 0.5s ease;
-        }
-
-        .radar-card.presence {
-            border-color: var(--presence);
-            box-shadow: 0 0 20px rgba(255, 77, 77, 0.15);
-        }
-
-        .radar-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            gap: 10px;
             width: 100%;
-            margin-bottom: 10px;
+            max-width: 380px;
+            margin-top: 20px;
         }
-
-        .radar-title {
-            font-weight: 600;
-            font-size: 20px;
-        }
-
-        .radar-status {
-            font-weight: 600;
-            color: #34c759;
-        }
-
-        .radar-card.presence .radar-status {
-            color: var(--presence);
-        }
-
-        .radar-dist {
-            font-size: 16px;
-            color: var(--text-dim);
-            margin-bottom: 20px;
-        }
-
-        .debug-box {
-            width: 100%;
-            height: 70px;
-            overflow-y: auto;
-            background: rgba(0, 0, 0, 0.4);
-            border-radius: 12px;
-            color: #00ff00;
-            font-family: monospace;
-            font-size: 10px;
-            padding: 8px;
-            box-sizing: border-box;
-            margin-bottom: 15px;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-        }
-
-        .chart-container {
-            margin-top: 10px;
-        }
-
-        .chart-row {
-            display: flex;
-            align-items: flex-end;
-            height: 80px;
-            gap: 3px;
-            margin-bottom: 20px;
-            padding-bottom: 5px;
-            border-bottom: 1px solid var(--glass-border);
-        }
-
-        .chart-bar {
+        .action-btn {
             flex: 1;
-            background: linear-gradient(to top, #007aff, var(--accent));
-            border-radius: 4px 4px 0 0;
-            transition: height 0.15s cubic-bezier(0.17, 0.67, 0.83, 0.67);
-            position: relative;
-        }
-
-        .chart-bar span {
-            position: absolute;
-            top: -14px;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: 8px;
-            font-weight: 600;
-        }
-
-        .chart-label {
-            font-size: 9px;
-            color: var(--text-dim);
-            text-align: center;
-        }
-
-        .settings-panel {
-            background: var(--glass);
-            padding: 20px;
-            border-radius: 24px;
-            width: 100%;
-            max-width: 350px;
-            margin-top: 10px;
+            background: rgba(255,255,255,0.04);
             border: 1px solid var(--glass-border);
-        }
-
-        .setting-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-
-        .setting-item label {
-            font-size: 14px;
             color: var(--text-dim);
-        }
-
-        .setting-item input {
-            width: 70px;
-            padding: 8px;
-            background: rgba(255, 255, 255, 0.05);
-            color: white;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 10px;
-            text-align: center;
-        }
-
-        .mini-btn {
-            background: var(--accent);
-            color: #000;
-            border: none;
-            padding: 8px 16px;
-            font-size: 13px;
-            font-weight: 600;
-            border-radius: 10px;
-            cursor: pointer;
-        }
-
-        .nuclear-btn {
-            background: rgba(255, 77, 77, 0.1);
-            color: var(--presence);
-            border: 1px solid rgba(255, 77, 77, 0.3);
             padding: 12px;
             border-radius: 14px;
             font-size: 13px;
-            margin-top: 30px;
-            width: 100%;
-            max-width: 320px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
         }
+        .action-btn:active { transform: scale(0.97); }
+        .action-btn.refresh { color: var(--accent); border-color: rgba(0,210,255,0.2); }
+        .action-btn.danger  { color: #ff4d4d; border-color: rgba(255,77,77,0.2); }
 
-        #status {
-            margin-top: 15px;
-            font-size: 12px;
-            color: var(--text-dim);
-            text-transform: uppercase;
-            letter-spacing: 1px;
+        /* --- Debug Box --- */
+        .debug-box {
+            width: 100%;
+            max-width: 380px;
+            height: 64px;
+            overflow-y: auto;
+            background: rgba(0,0,0,0.5);
+            border-radius: 12px;
+            color: #00ff88;
+            font-family: 'Courier New', monospace;
+            font-size: 10px;
+            padding: 8px;
+            margin-top: 16px;
+            border: 1px solid rgba(255,255,255,0.04);
         }
 
         .mode-badge {
             font-size: 10px;
-            padding: 3px 8px;
-            border-radius: 8px;
-            background: rgba(255, 255, 255, 0.05);
+            padding: 2px 7px;
+            border-radius: 6px;
+            background: rgba(255,255,255,0.05);
             color: var(--text-dim);
         }
 
-        /* v2 Radar Card — New Production Display */
-        .radar-card-v2 {
-            background: var(--card-bg);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            padding: 24px;
-            border-radius: 32px;
-            margin-bottom: 25px;
-            width: 100%;
-            max-width: 360px;
-            box-sizing: border-box;
-            border: 1px solid var(--glass-border);
-            transition: all 0.5s ease;
-        }
-
-        .radar-card-v2.presence {
-            border-color: var(--presence);
-            box-shadow: 0 0 20px rgba(255, 77, 77, 0.15);
-        }
-
-        .info-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-            margin-top: 12px;
-        }
-
-        .info-item {
-            background: var(--glass);
-            border-radius: 16px;
-            padding: 14px;
-            border: 1px solid var(--glass-border);
-        }
-
-        .info-label {
-            font-size: 13px;
-            color: rgba(255, 255, 255, 0.7);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .info-value {
-            font-size: 22px;
-            font-weight: 600;
-            margin-top: 4px;
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-dim);
+            font-size: 14px;
         }
     </style>
 </head>
 
 <body>
-    <h1>LD2420 Gateway</h1>
-    <button id="connectBtn" class="main-btn">Connect Radar</button>
+    <h1>Gateway Mesh</h1>
+    <div class="subtitle">v0.2 &middot; ESP-NOW + BLE</div>
 
-    <div id="deviceList" style="width: 100%; display: flex; flex-direction: column; align-items: center;"></div>
-
-    <div id="settingsPanel" class="settings-panel" style="display: none;">
-        <h3 style="margin: 0 0 15px 0;">System Settings</h3>
-        <div class="setting-item">
-            <label>IIR Filter (ms)</label>
-            <input type="number" id="iirInput" min="1" max="1000">
-            <button class="mini-btn" onclick="saveIIR()">Save</button>
-        </div>
-        <div class="setting-item">
-            <label>Debounce (ms)</label>
-            <input type="number" id="debounceInput" min="10" max="5000">
-            <button class="mini-btn" onclick="saveDebounce()">Save</button>
-        </div>
-        <div id="offsetsContainer"></div>
-    </div>
-
+    <button id="connectBtn" class="main-btn">Connect Gateway</button>
     <div id="status">Ready</div>
 
-    <button class="nuclear-btn" onclick="nuclearReset()">☢️ FORCE APP UPDATE & RELOAD</button>
+    <div id="deviceList"></div>
+
+    <div class="action-bar" id="actionBar" style="display:none;">
+        <button class="action-btn refresh" onclick="refreshRoster()">⟳ Refresh</button>
+        <button class="action-btn danger" onclick="nuclearReset()">☢ Reset App</button>
+    </div>
+
+    <div id="debugBox" class="debug-box" style="display:none;"></div>
 
     <script>
-        const APP_VERSION = 'v0.06';
+        const APP_VERSION = 'v0.2';
         const SERVICE_UUID = '12345678-1234-5678-1234-56789abcdef0';
-        const ROSTER_UUID = '12345678-1234-5678-1234-56789abcdef1';
-        const CMD_UUID = '12345678-1234-5678-1234-56789abcdef2';
-        const STATE_UUID = '12345678-1234-5678-1234-56789abcdef3';
-        const CONFIG_UUID = '12345678-1234-5678-1234-56789abcdef4';
-        const LD2420_UUID = '12345678-1234-5678-1234-56789abcdef5';
+        const ROSTER_UUID  = '12345678-1234-5678-1234-56789abcdef1';
+        const COMMAND_UUID = '12345678-1234-5678-1234-56789abcdef2';
+        const STATE_UUID   = '12345678-1234-5678-1234-56789abcdef3';
 
-        let bleDevice, gattServer, cmdChar, configChar, rosterChar, stateChar, radarChar;
-        let devices = {};
-        let configs = { offsets: [50, 50, 50, 50, 50, 50], iir: 10, debounce: 500, radMin: 0, radMax: 15, radTout: 5, radMt: Array(16).fill(40), radSt: Array(16).fill(40) };
-        let calibMode = false;
+        let bleDevice, gattServer;
+        let rosterChar, commandChar, stateChar;
+        let devices = []; // [{id, name, numSwitches, states:[]}]
         let pollTimer = null;
-        let usePollingFallback = false;
 
-        const statusEl = document.getElementById('status');
+        const statusEl   = document.getElementById('status');
         const connectBtn = document.getElementById('connectBtn');
         const deviceList = document.getElementById('deviceList');
-        const settingsPanel = document.getElementById('settingsPanel');
+        const actionBar  = document.getElementById('actionBar');
+        const debugBox   = document.getElementById('debugBox');
 
-        function debugLog(msg) {
-            const debugEl = document.getElementById('frontendDebug');
-            if (!debugEl) return;
-            const now = new Date().toLocaleTimeString();
-            debugEl.innerHTML = `[${now}] ${msg}<br>` + debugEl.innerHTML;
-            if (debugEl.innerHTML.length > 3000) debugEl.innerHTML = debugEl.innerHTML.substring(0, 3000);
-        }
-
-        // Detect if running as installed PWA (standalone mode)
         function isStandalonePWA() {
             return window.matchMedia('(display-mode: standalone)').matches ||
                 window.navigator.standalone === true;
         }
 
-        async function nuclearReset() {
-            if (!confirm("This will clear all local app cache and force a complete reload. Use this if your phone is stuck on an old version. Proceed?")) return;
-            statusEl.textContent = '☢️ PURGING CACHE...';
-            try {
-                if ('serviceWorker' in navigator) {
-                    const registrations = await navigator.serviceWorker.getRegistrations();
-                    for (let reg of registrations) await reg.unregister();
-                }
-                const cacheNames = await caches.keys();
-                for (let name of cacheNames) await caches.delete(name);
-                statusEl.textContent = 'SUCCESS. RELOADING...';
-                setTimeout(() => window.location.reload(true), 1000);
-            } catch (e) { alert("Reset failed: " + e.message); }
+        function debugLog(msg) {
+            debugBox.style.display = 'block';
+            const t = new Date().toLocaleTimeString();
+            debugBox.innerHTML = `[${t}] ${msg}<br>` + debugBox.innerHTML;
+            if (debugBox.innerHTML.length > 3000) debugBox.innerHTML = debugBox.innerHTML.substring(0, 3000);
         }
 
+        // ============================================================
+        // BLE Connection
+        // ============================================================
         connectBtn.addEventListener('click', async () => {
             try {
-                statusEl.textContent = 'Scanning...';
+                statusEl.textContent = 'SCANNING...';
                 bleDevice = await navigator.bluetooth.requestDevice({
                     filters: [{ namePrefix: 'ESP32_Gateway' }],
                     optionalServices: [SERVICE_UUID]
                 });
                 bleDevice.addEventListener('gattserverdisconnected', onDisconnected);
-                statusEl.textContent = 'Connecting...';
+
+                statusEl.textContent = 'CONNECTING...';
                 gattServer = await bleDevice.gatt.connect();
-                statusEl.textContent = 'Getting Services...';
+
+                statusEl.textContent = 'DISCOVERING SERVICES...';
                 const service = await gattServer.getPrimaryService(SERVICE_UUID);
-                rosterChar = await service.getCharacteristic(ROSTER_UUID);
-                cmdChar = await service.getCharacteristic(CMD_UUID);
-                stateChar = await service.getCharacteristic(STATE_UUID);
-                configChar = await service.getCharacteristic(CONFIG_UUID);
 
-                statusEl.textContent = 'Reading Config...';
-                const configValue = await configChar.readValue();
-                parseConfig(configValue.buffer);
+                // Get characteristics
+                rosterChar  = await service.getCharacteristic(ROSTER_UUID);
+                commandChar = await service.getCharacteristic(COMMAND_UUID);
+                stateChar   = await service.getCharacteristic(STATE_UUID);
+                debugLog('Characteristics discovered');
 
-                statusEl.textContent = 'Reading Roster...';
-                const rosterValue = await rosterChar.readValue();
-                parseRoster(rosterValue.buffer);
-
-                // Subscribe to state notifications (for relay toggles)
-                await stateChar.startNotifications();
-                stateChar.addEventListener('characteristicvaluechanged', handleStateUpdate);
-
-                // PHONE FIX: Get radar characteristic by enumerating ALL characteristics,
-                // since Android Web Bluetooth getCharacteristic(UUID) frequently fails for
-                // non-primary characteristics due to a caching bug in the Android BLE stack.
-                // Using getCharacteristics() forces a fresh fetch of the full attribute list.
+                // Subscribe to state notifications
                 try {
-                    // Enumerate ALL characteristics and find the radar one by UUID
-                    const allChars = await service.getCharacteristics();
-                    debugLog(`Discovering ${allChars.length} characteristics...`);
-                    let foundRadar = false;
-                    for (const ch of allChars) {
-                        debugLog(`Found char: ${ch.uuid}`);
-                        if (ch.uuid.toUpperCase() === LD2420_UUID.toUpperCase()) {
-                            radarChar = ch;
-                            foundRadar = true;
-                            debugLog('✓ Matched LD2420 radar characteristic!');
-                            break;
-                        }
-                    }
-
-                    if (foundRadar && radarChar) {
-                        // Subscribe to notifications as a bonus
-                        try {
-                            await radarChar.startNotifications();
-                            radarChar.addEventListener('characteristicvaluechanged', handleRadarUpdate);
-                            debugLog('Radar notifications subscribed');
-                        } catch (e2) {
-                            debugLog('Notifications not supported for radar char, using polling only');
-                        }
-
-                        // ALWAYS enable polling - notifications are unreliable on phones
-                        debugLog('Starting radar polling (300ms) for reliable phone data');
-                        usePollingFallback = true;
-                        startPollingFallback();
-                    } else {
-                        debugLog('ERROR: LD2420 radar characteristic UUID not found in service!');
-                    }
+                    await stateChar.startNotifications();
+                    stateChar.addEventListener('characteristicvaluechanged', handleStateNotification);
+                    debugLog('State notifications subscribed');
                 } catch (e) {
-                    debugLog('Radar enumeration failed: ' + e.message);
+                    debugLog('Notification subscribe failed: ' + e.message);
                 }
 
-                statusEl.textContent = 'Dashboard Active';
+                // Start state polling fallback (Android reliability)
+                startStatePolling();
+
+                // Read roster
+                await refreshRoster();
+
+                statusEl.textContent = 'CONNECTED';
                 connectBtn.style.display = 'none';
-            } catch (error) {
-                statusEl.textContent = 'Error: ' + error.message;
-                console.error(error);
+                actionBar.style.display = 'flex';
+
+                debugLog('Dashboard active | Mode: ' + (isStandalonePWA() ? 'PWA' : 'Browser'));
+            } catch (err) {
+                statusEl.textContent = 'ERROR: ' + err.message;
+                debugLog('Connect failed: ' + err.message);
             }
         });
 
-        // Polling fallback: Poll radar directly since BLE notifications are unreliable on Android
-        // for high-frequency data streams (~5Hz radar). Uses 300ms interval to ensure we
-        // catch all data frames even if some readValue() calls fail.
-        let pollFailCount = 0;
-        let pollOkCount = 0;
-
-        function startPollingFallback() {
-            if (pollTimer) clearInterval(pollTimer);
-            pollTimer = setInterval(async () => {
-                if (!radarChar || !gattServer || !gattServer.connected) {
-                    clearInterval(pollTimer);
-                    pollTimer = null;
-                    return;
-                }
-                try {
-                    const value = await radarChar.readValue();
-                    pollOkCount++;
-                    if (pollOkCount === 1 || pollOkCount % 50 === 0) {
-                        debugLog(`POLL OK #${pollOkCount} (${value.byteLength}B)`);
-                    }
-                    handleRadarUpdate({ target: { value } });
-                } catch (e) {
-                    pollFailCount++;
-                    // Log first few failures, then only every 10th
-                    if (pollFailCount <= 3 || pollFailCount % 10 === 0) {
-                        debugLog(`POLL FAIL #${pollFailCount}: ${e.message}`);
-                    }
-                }
-            }, 300);
-        }
-
-        function stopPollingFallback() {
-            if (pollTimer) {
-                clearInterval(pollTimer);
-                pollTimer = null;
-            }
-        }
-
         function onDisconnected() {
-            statusEl.textContent = 'Disconnected';
+            statusEl.textContent = 'DISCONNECTED';
             connectBtn.style.display = 'block';
+            actionBar.style.display = 'none';
             deviceList.innerHTML = '';
-            settingsPanel.style.display = 'none';
-            devices = {};
-            stopPollingFallback();
-            usePollingFallback = false;
+            devices = [];
+            stopStatePolling();
+            debugLog('Disconnected');
         }
 
-        function parseRoster(buffer) {
-            const view = new DataView(buffer);
+        // ============================================================
+        // Roster
+        // ============================================================
+        async function refreshRoster() {
+            try {
+                statusEl.textContent = 'READING ROSTER...';
+                const value = await rosterChar.readValue();
+                parseRoster(value);
+                renderDevices();
+                statusEl.textContent = 'CONNECTED · ' + devices.length + ' DEVICE' + (devices.length !== 1 ? 'S' : '');
+                debugLog('Roster: ' + devices.length + ' devices loaded');
+            } catch (e) {
+                debugLog('Roster read failed: ' + e.message);
+                statusEl.textContent = 'ROSTER ERROR';
+            }
+        }
+
+        function parseRoster(dataView) {
+            const raw = new Uint8Array(dataView.buffer, dataView.byteOffset, dataView.byteLength);
             let offset = 0;
-            while (offset < view.byteLength) {
-                const id = view.getUint8(offset++);
-                const type = view.getUint8(offset++);
-                const state = view.getUint8(offset++);
-                const nameLen = view.getUint8(offset++);
-                const name = new TextDecoder().decode(new Uint8Array(buffer, offset, nameLen));
+            const numDevices = raw[offset++];
+
+            devices = [];
+            for (let d = 0; d < numDevices && offset < raw.length; d++) {
+                const deviceId    = raw[offset++];
+                const numSwitches = raw[offset++];
+                const nameLen     = raw[offset++];
+                const nameBytes   = raw.slice(offset, offset + nameLen);
+                const name        = new TextDecoder().decode(nameBytes);
                 offset += nameLen;
-                devices[id] = { type, state, name };
-            }
-            renderUI();
-        }
 
-        function parseConfig(buffer) {
-            const view = new DataView(buffer);
-            for (let i = 0; i < 6; i++) configs.offsets[i] = view.getUint16(i * 2, true);
-            configs.iir = view.getUint32(12, true);
-            configs.debounce = view.getUint32(16, true);
-            if (view.byteLength >= 56) {
-                configs.radMin = view.getUint8(20);
-                configs.radMax = view.getUint8(21);
-                configs.radTout = view.getUint16(22, true);
-                for (let i = 0; i < 16; i++) {
-                    configs.radMt[i] = view.getUint8(24 + i);
-                    configs.radSt[i] = view.getUint8(40 + i);
+                const states = [];
+                for (let s = 0; s < numSwitches && offset < raw.length; s++) {
+                    states.push(raw[offset++]);
                 }
-            }
-            renderSettings();
-            settingsPanel.style.display = 'block';
-        }
 
-        function renderSettings() {
-            document.getElementById('iirInput').value = configs.iir;
-            document.getElementById('debounceInput').value = configs.debounce;
-            const container = document.getElementById('offsetsContainer');
-            container.innerHTML = '';
-            for (let i = 0; i < 6; i++) {
-                const div = document.createElement('div');
-                div.className = 'setting-item';
-                div.innerHTML = `<label>S${i + 1} Offset</label><input type="number" id="offIn${i}" value="${configs.offsets[i]}"><button class="mini-btn" onclick="saveOffset(${i + 1})">Save</button>`;
-                container.appendChild(div);
+                devices.push({ id: deviceId, name, numSwitches, states });
             }
         }
 
-        async function saveIIR() {
-            const val = parseInt(document.getElementById('iirInput').value);
-            const payload = new Uint8Array(5);
-            payload[0] = 2;
-            new DataView(payload.buffer).setUint32(1, val, true);
-            await configChar.writeValue(payload);
-            statusEl.textContent = 'IIR Saved';
+        // ============================================================
+        // State Notifications
+        // Packet: [device_id, num_switches, state_0, state_1, ...]
+        // ============================================================
+        function handleStateNotification(event) {
+            const dv = event.target.value;
+            processStatePacket(dv);
         }
 
-        async function saveDebounce() {
-            const val = parseInt(document.getElementById('debounceInput').value);
-            const payload = new Uint8Array(5);
-            payload[0] = 3;
-            new DataView(payload.buffer).setUint32(1, val, true);
-            await configChar.writeValue(payload);
-            statusEl.textContent = 'Debounce Saved';
-        }
+        function processStatePacket(dataView) {
+            if (!dataView || dataView.byteLength < 2) return;
 
-        async function saveOffset(id) {
-            const val = parseInt(document.getElementById(`offIn${id - 1}`).value);
-            const payload = new Uint8Array(4);
-            payload[0] = 1; payload[1] = id;
-            new DataView(payload.buffer).setUint16(2, val, true);
-            await configChar.writeValue(payload);
-            statusEl.textContent = 'Offset Saved';
-        }
+            const deviceId    = dataView.getUint8(0);
+            const numSwitches = dataView.getUint8(1);
 
-        function handleStateUpdate(event) {
-            const view = event.target.value;
-            const id = view.getUint8(0);
-            const state = view.getUint8(1);
-            if (devices[id]) {
-                devices[id].state = state;
-                const btn = document.getElementById(`toggle-${id}`);
-                if (btn) state ? btn.classList.add('on') : btn.classList.remove('on');
-            }
-        }
+            if (dataView.byteLength < 2 + numSwitches) return;
 
-        function handleRadarUpdate(event) {
-            const view = event.target.value;
-            if (!view || view.byteLength < 3) {
-                debugLog('Bad radar packet: ' + (view ? view.byteLength + ' bytes' : 'null'));
+            const dev = devices.find(d => d.id === deviceId);
+            if (!dev) {
+                debugLog('State for unknown device ' + deviceId + ', refreshing roster');
+                refreshRoster();
                 return;
             }
 
-            // v2 flags-based struct: 0=flags, 1=bucket, 2-3=distance, 4-19=gate_energy
-            const flags = view.getUint8(0);
-            const presence = flags & 0x01;
-            const fan_active = (flags >> 1) & 0x01;
-            const bucket = view.getUint8(1);
-            const dist = view.getUint16(2, true);
-            const card = document.getElementById('radar-card');
-            if (!card) return;
+            for (let s = 0; s < numSwitches; s++) {
+                const newState = dataView.getUint8(2 + s);
+                dev.states[s] = newState;
 
-            const modeTag = usePollingFallback ? '[POLL]' : '[NOTIFY]';
-            debugLog(`${modeTag} ${view.byteLength}B | F:0x${flags.toString(16)} B:${bucket} D:${dist}cm`);
-
-            // Presence
-            const statusEl = document.getElementById('radar-status');
-            const presenceEl = document.getElementById('radar-presence');
-            if (presence) {
-                card.classList.add('presence');
-                presenceEl.textContent = 'Detected';
-                presenceEl.style.color = 'var(--presence)';
-                statusEl.textContent = 'PRESENCE DETECTED';
-            } else {
-                card.classList.remove('presence');
-                presenceEl.textContent = 'Clear';
-                presenceEl.style.color = '#34c759';
-                statusEl.textContent = 'CLEAR';
+                // Update toggle UI
+                const toggleEl = document.getElementById(`toggle-${deviceId}-${s}`);
+                if (toggleEl) {
+                    if (newState) toggleEl.classList.add('on');
+                    else toggleEl.classList.remove('on');
+                }
             }
+            debugLog(`State: dev=${deviceId} → [${dev.states.join(',')}]`);
+        }
 
-            // Fan
-            const fanEl = document.getElementById('radar-fan');
-            fanEl.textContent = fan_active ? 'Active' : 'Inactive';
-            fanEl.style.color = fan_active ? '#ff9f0a' : 'var(--text-dim)';
-
-            // Distance
-            document.getElementById('radar-dist').textContent =
-                (dist > 0 && dist < 1500) ? (dist / 100).toFixed(1) + ' m' : '--';
-
-            // Bucket No.
-            document.getElementById('radar-bucket').textContent = bucket.toString();
-
-            // Calibration bars (gate_energy starts at offset 4)
-            if (calibMode) {
-                for (let i = 0; i < 16; i++) {
-                    const energy = (4 + i < view.byteLength) ? view.getUint8(4 + i) : 0;
-                    const bar = document.getElementById(`mbar-${i}`);
-                    if (bar) {
-                        bar.style.height = Math.max(energy, 5) + '%';
-                        bar.querySelector('span').textContent = energy;
+        // Polling fallback for Android reliability
+        let pollOk = 0;
+        function startStatePolling() {
+            if (pollTimer) clearInterval(pollTimer);
+            pollTimer = setInterval(async () => {
+                if (!stateChar || !gattServer || !gattServer.connected) {
+                    stopStatePolling();
+                    return;
+                }
+                try {
+                    const value = await stateChar.readValue();
+                    pollOk++;
+                    if (pollOk <= 3 || pollOk % 100 === 0) {
+                        debugLog(`Poll OK #${pollOk} (${value.byteLength}B)`);
                     }
+                    processStatePacket(value);
+                } catch (e) {
+                    // Silently retry — polling errors are expected occasionally
                 }
+            }, 500);
+        }
+
+        function stopStatePolling() {
+            if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+        }
+
+        // ============================================================
+        // Send Toggle Command: [device_id, switch_id, new_state]
+        // ============================================================
+        async function sendToggle(deviceId, switchId) {
+            const dev = devices.find(d => d.id === deviceId);
+            if (!dev) return;
+
+            const newState = dev.states[switchId] ? 0 : 1;
+
+            // Optimistic UI update
+            dev.states[switchId] = newState;
+            const toggleEl = document.getElementById(`toggle-${deviceId}-${switchId}`);
+            if (toggleEl) {
+                if (newState) toggleEl.classList.add('on');
+                else toggleEl.classList.remove('on');
+            }
+
+            try {
+                const payload = new Uint8Array([deviceId, switchId, newState]);
+                await commandChar.writeValue(payload);
+                debugLog(`CMD: dev=${deviceId} sw=${switchId} → ${newState}`);
+            } catch (e) {
+                debugLog('CMD failed: ' + e.message);
+                // Revert optimistic update
+                dev.states[switchId] = newState ? 0 : 1;
+                if (toggleEl) toggleEl.classList.toggle('on');
             }
         }
 
-        function toggleCalib() {
-            calibMode = !calibMode;
-            document.getElementById('calib-container').style.display = calibMode ? 'block' : 'none';
-            debugLog(calibMode ? 'Calibration view ON' : 'Calibration view OFF');
-        }
-
-        function renderUI() {
+        // ============================================================
+        // Render UI
+        // ============================================================
+        function renderDevices() {
             deviceList.innerHTML = '';
-            for (const [id, dev] of Object.entries(devices)) {
-                if (dev.type === 2) {
-                    // ========== NEW V2 RADAR DISPLAY ==========
-                    const card = document.createElement('div');
-                    card.className = 'radar-card-v2';
-                    card.id = 'radar-card';
 
-                    const modeBadge = isStandalonePWA() ? '<span class="mode-badge">PWA</span>' : '<span class="mode-badge">BROWSER</span>';
-
-                    card.innerHTML = `
-                        <div class="radar-header">
-                            <span class="radar-title">${dev.name} <span style="font-size:10px; opacity:0.5;">${APP_VERSION}</span></span>
-                            <span style="display:flex; align-items:center; gap:8px;">
-                                ${modeBadge}
-                                <span class="radar-status" id="radar-status">WAITING</span>
-                            </span>
-                        </div>
-
-                        <div class="info-grid">
-                            <div class="info-item">
-                                <div class="info-label">Presence</div>
-                                <div class="info-value" id="radar-presence" style="color:var(--text-dim);">--</div>
-                            </div>
-                            <div class="info-item">
-                                <div class="info-label">Fan</div>
-                                <div class="info-value" id="radar-fan" style="color:var(--text-dim);">--</div>
-                            </div>
-                            <div class="info-item">
-                                <div class="info-label">Distance</div>
-                                <div class="info-value" id="radar-dist" style="color:var(--text-dim);">--</div>
-                            </div>
-                            <div class="info-item">
-                                <div class="info-label">Bucket No.</div>
-                                <div class="info-value" id="radar-bucket" style="color:var(--text-dim);">--</div>
-                            </div>
-                        </div>
-
-                        <div id="frontendDebug" class="debug-box" style="margin-top:12px;">Initializing...</div>
-                        <button class="mini-btn" onclick="toggleCalib()" style="width:100%; margin-top:10px;">Toggle Calibration View</button>
-                        <div id="calib-container" style="display:none; margin-top:10px;">
-                            <div style="font-size:11px; color:var(--text-dim);">Energy Levels</div>
-                            <div class="chart-row">${Array.from({ length: 16 }, (_, i) =>
-                        `<div style="flex:1; position:relative;"><div class="chart-bar" id="mbar-${i}" style="height:5%;"><span>0</span></div><div class="chart-label">${i}</div></div>`
-                    ).join('')}</div>
-                        </div>
-                    `;
-                    deviceList.prepend(card);
-                    debugLog('Radar v2 UI rendered. Mode: ' + (isStandalonePWA() ? 'PWA' : 'Browser'));
-                } else if (dev.type === 1) {
-                    const card = document.createElement('div');
-                    card.className = 'device-card';
-                    card.innerHTML = `<span>${dev.name}</span><div class="toggle-btn ${dev.state ? 'on' : ''}" id="toggle-${id}" onclick="sendToggle(${id})"><div class="toggle-knob"></div></div>`;
-                    deviceList.appendChild(card);
-                }
+            if (devices.length === 0) {
+                deviceList.innerHTML = '<div class="empty-state">No devices found.<br>Check your gateway.</div>';
+                return;
             }
+
+            devices.forEach((dev, idx) => {
+                const card = document.createElement('div');
+                card.className = 'device-card';
+                card.style.animationDelay = (idx * 0.08) + 's';
+
+                const badge = dev.id === 0
+                    ? '<span class="device-badge">MASTER</span>'
+                    : `<span class="device-badge">ID ${dev.id}</span>`;
+
+                let switchesHTML = '';
+                for (let s = 0; s < dev.numSwitches; s++) {
+                    const isOn = dev.states[s] ? 'on' : '';
+                    switchesHTML += `
+                        <div class="switch-row">
+                            <span class="switch-label">Switch ${s + 1}</span>
+                            <div class="toggle-btn ${isOn}" id="toggle-${dev.id}-${s}"
+                                 onclick="sendToggle(${dev.id}, ${s})">
+                                <div class="toggle-knob"></div>
+                            </div>
+                        </div>`;
+                }
+
+                card.innerHTML = `
+                    <div class="device-header">
+                        <span class="device-name">${dev.name}</span>
+                        ${badge}
+                    </div>
+                    ${switchesHTML}`;
+
+                deviceList.appendChild(card);
+            });
         }
 
-        async function sendToggle(id) {
-            const newState = devices[id].state ? 0 : 1;
-            await cmdChar.writeValue(new Uint8Array([id, newState]));
-            devices[id].state = newState;
-            const btn = document.getElementById(`toggle-${id}`);
-            newState ? btn.classList.add('on') : btn.classList.remove('on');
+        // ============================================================
+        // Nuclear Reset (PWA cache purge)
+        // ============================================================
+        async function nuclearReset() {
+            if (!confirm('Clear all app cache and force reload?')) return;
+            statusEl.textContent = '☢ PURGING...';
+            try {
+                if ('serviceWorker' in navigator) {
+                    const regs = await navigator.serviceWorker.getRegistrations();
+                    for (const r of regs) await r.unregister();
+                }
+                const names = await caches.keys();
+                for (const n of names) await caches.delete(n);
+                statusEl.textContent = 'RELOADING...';
+                setTimeout(() => window.location.reload(true), 500);
+            } catch (e) { alert('Reset failed: ' + e.message); }
         }
 
-        // Service worker registration - use updateViaCache to prevent caching issues
+        // ============================================================
+        // Service Worker
+        // ============================================================
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('service-worker.js', { updateViaCache: 'none' })
                 .then(reg => {
                     reg.onupdatefound = () => {
-                        const installingWorker = reg.installing;
-                        installingWorker.onstatechange = () => {
-                            if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                                if (confirm("New version available! Reload now?")) window.location.reload();
+                        const w = reg.installing;
+                        w.onstatechange = () => {
+                            if (w.state === 'installed' && navigator.serviceWorker.controller) {
+                                if (confirm('New version available! Reload?')) window.location.reload();
                             }
                         };
                     };
                 });
         }
 
-        // Log startup info
-        console.log('Gateway v' + APP_VERSION + ' | Mode: ' + (isStandalonePWA() ? 'PWA Standalone' : 'Browser Tab'));
+        console.log(`Gateway Mesh ${APP_VERSION} | ${isStandalonePWA() ? 'PWA' : 'Browser'}`);
     </script>
 </body>
 

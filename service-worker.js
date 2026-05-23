@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gateway-cache-v14';
+const CACHE_NAME = 'gateway-mesh-v20';
 const urlsToCache = [
   './index.html',
   './manifest.json',
@@ -30,15 +30,13 @@ self.addEventListener('activate', event => {
   );
 });
 
-// Only intercept requests for index.html/manifest.json - do NOT intercept anything else
-// This prevents interference with Web Bluetooth's internal operations
+// Only intercept page assets — never interfere with Web Bluetooth internals
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
-  // Only serve cached pages, never intercept API/Bluetooth traffic
-  if (url.pathname.endsWith('.html') || url.pathname === '/' || url.pathname.endsWith('.json') || url.pathname.endsWith('.js')) {
+  if (url.pathname.endsWith('.html') || url.pathname === '/' ||
+      url.pathname.endsWith('.json') || url.pathname.endsWith('.js')) {
     event.respondWith(
       fetch(event.request).catch(() => caches.match(event.request))
     );
   }
-  // Let all other requests (including BLE internal requests) pass through untouched
 });
