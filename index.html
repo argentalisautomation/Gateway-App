@@ -229,6 +229,63 @@
             color: var(--text-dim);
             font-size: 14px;
         }
+        /* --- Settings Panel --- */
+        .settings-panel {
+            margin-top: 16px;
+            border-top: 1px solid var(--glass-border);
+            padding-top: 12px;
+        }
+        .settings-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            color: var(--text-dim);
+            cursor: pointer;
+            padding: 8px 0;
+            user-select: none;
+        }
+        .settings-content {
+            display: none;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 8px;
+        }
+        .settings-content.expanded {
+            display: flex;
+        }
+        .setting-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .setting-label {
+            font-size: 13px;
+            color: rgba(255,255,255,0.8);
+        }
+        .setting-input-group {
+            display: flex;
+            gap: 8px;
+        }
+        .setting-input {
+            width: 60px;
+            background: rgba(0,0,0,0.4);
+            border: 1px solid var(--glass-border);
+            color: #fff;
+            padding: 6px;
+            border-radius: 8px;
+            text-align: center;
+            font-family: inherit;
+        }
+        .setting-btn {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid var(--glass-border);
+            color: #fff;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        .setting-btn:active { background: rgba(255,255,255,0.2); }
     </style>
 </head>
 
@@ -375,7 +432,15 @@
                     states.push(raw[offset++]);
                 }
 
-                devices.push({ id: deviceId, name, numSwitches, states });
+                const offsetsArr = [];
+                if (deviceId === 0 && offset < raw.length) {
+                    const sysFlags = raw[offset++]; // skip sys flags
+                    for (let s = 0; s < numSwitches && offset < raw.length; s++) {
+                        offsetsArr.push(raw[offset++]);
+                    }
+                }
+
+                devices.push({ id: deviceId, name, numSwitches, states, offsets: offsetsArr });
             }
         }
 
@@ -414,7 +479,7 @@
                     else toggleEl.classList.remove('on');
                 }
             }
-            debugLog(`State: dev=${deviceId} → [${dev.states.join(',')}]`);
+            // debugLog(`State: dev=${deviceId} → [${dev.states.join(',')}]`);
         }
 
         // Polling fallback for Android reliability
@@ -429,9 +494,9 @@
                 try {
                     const value = await stateChar.readValue();
                     pollOk++;
-                    if (pollOk <= 3 || pollOk % 100 === 0) {
-                        debugLog(`Poll OK #${pollOk} (${value.byteLength}B)`);
-                    }
+                    // if (pollOk <= 3 || pollOk % 100 === 0) {
+                    //     debugLog(`Poll OK #${pollOk} (${value.byteLength}B)`);
+                    // }
                     processStatePacket(value);
                 } catch (e) {
                     // Silently retry — polling errors are expected occasionally
@@ -472,6 +537,31 @@
             }
         }
 
+        async function setThreshold(deviceId, switchId) {
+            const inputEl = document.getElementById(`offset-${deviceId}-${switchId}`);
+            if (!inputEl) return;
+            const offset = parseInt(inputEl.value, 10);
+            if (isNaN(offset) || offset < 10 || offset > 250) {
+                alert("Offset must be between 10 and 250");
+                return;
+            }
+
+            try {
+                // Command format: [device_id, 0xFE, target_switch_id, new_offset_value]
+                const payload = new Uint8Array([deviceId, 0xFE, switchId, offset]);
+                await commandChar.writeValue(payload);
+                debugLog(`CMD: Settings dev=${deviceId} sw=${switchId} -> offset=${offset}`);
+                // Give visual feedback
+                const btn = inputEl.nextElementSibling;
+                const oldText = btn.innerText;
+                btn.innerText = "✓";
+                setTimeout(() => btn.innerText = oldText, 1000);
+            } catch (e) {
+                debugLog('Settings CMD failed: ' + e.message);
+                alert('Failed to save: ' + e.message);
+            }
+        }
+
         // ============================================================
         // Render UI
         // ============================================================
@@ -505,12 +595,38 @@
                         </div>`;
                 }
 
+                let settingsHTML = '';
+                if (dev.id === 0 && dev.offsets && dev.offsets.length > 0) {
+                    settingsHTML = `
+                        <div class="settings-panel">
+                            <div class="settings-header" onclick="document.getElementById('settings-${dev.id}').classList.toggle('expanded')">
+                                <span>⚙ Threshold Settings</span>
+                                <span>▼</span>
+                            </div>
+                            <div class="settings-content" id="settings-${dev.id}">
+                    `;
+                    for (let s = 0; s < dev.numSwitches; s++) {
+                        const savedOffset = dev.offsets[s] || 40;
+                        settingsHTML += `
+                            <div class="setting-row">
+                                <span class="setting-label">S${s + 1} Sensitivity offset:</span>
+                                <div class="setting-input-group">
+                                    <input type="number" id="offset-${dev.id}-${s}" class="setting-input" value="${savedOffset}" min="10" max="250" step="1">
+                                    <button class="setting-btn" onclick="setThreshold(${dev.id}, ${s})">Commit</button>
+                                </div>
+                            </div>
+                        `;
+                    }
+                    settingsHTML += `</div></div>`;
+                }
+
                 card.innerHTML = `
                     <div class="device-header">
                         <span class="device-name">${dev.name}</span>
                         ${badge}
                     </div>
-                    ${switchesHTML}`;
+                    ${switchesHTML}
+                    ${settingsHTML}`;
 
                 deviceList.appendChild(card);
             });
