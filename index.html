@@ -317,6 +317,30 @@
         let rosterChar, commandChar, stateChar;
         let devices = []; // [{id, name, numSwitches, states:[]}]
         let pollTimer = null;
+        let isGattWritePending = false;
+        let gattWriteQueue = [];
+
+        async function queueGattWrite(payload) {
+            return new Promise((resolve, reject) => {
+                gattWriteQueue.push({ payload, resolve, reject });
+                processGattQueue();
+            });
+        }
+
+        async function processGattQueue() {
+            if (isGattWritePending || gattWriteQueue.length === 0) return;
+            isGattWritePending = true;
+            const { payload, resolve, reject } = gattWriteQueue.shift();
+            try {
+                if (commandChar) await commandChar.writeValue(payload);
+                resolve();
+            } catch (e) {
+                reject(e);
+            } finally {
+                isGattWritePending = false;
+                processGattQueue();
+            }
+        }
 
         const statusEl   = document.getElementById('status');
         const connectBtn = document.getElementById('connectBtn');
@@ -439,8 +463,19 @@
                 for (let s = 0; s < numSwitches && offset < raw.length; s++) {
                     offsetsArr.push(raw[offset++]);
                 }
+                
+                let presence = 0, distance = 0;
+                let gate_energies = [];
+                if (offset < raw.length) {
+                    presence = raw[offset++];
+                    distance = dataView.getUint16(offset, true); offset += 2;
+                    for (let g = 0; g < 16; g++) {
+                        gate_energies.push(dataView.getUint16(offset, true));
+                        offset += 2;
+                    }
+                }
 
-                devices.push({ id: deviceId, name, numSwitches, states, offsets: offsetsArr });
+                devices.push({ id: deviceId, name, numSwitches, states, offsets: offsetsArr, presence, distance, gate_energies });
             }
         }
 
@@ -527,7 +562,7 @@
 
             try {
                 const payload = new Uint8Array([deviceId, switchId, newState]);
-                await commandChar.writeValue(payload);
+                await queueGattWrite(payload);
                 debugLog(`CMD: dev=${deviceId} sw=${switchId} → ${newState}`);
             } catch (e) {
                 debugLog('CMD failed: ' + e.message);
@@ -549,7 +584,7 @@
             try {
                 // Command format: [device_id, 0xFE, target_switch_id, new_offset_value]
                 const payload = new Uint8Array([deviceId, 0xFE, switchId, offset]);
-                await commandChar.writeValue(payload);
+                await queueGattWrite(payload);
                 debugLog(`CMD: Settings dev=${deviceId} sw=${switchId} -> offset=${offset}`);
                 // Give visual feedback
                 const btn = inputEl.nextElementSibling;
@@ -562,6 +597,19 @@
             }
         }
         
+        async function sendRadarCommand(deviceId, cmdId) {
+            try {
+                // Command format: [device_id, cmd_id, 0, 0]
+                const payload = new Uint8Array([deviceId, cmdId, 0, 0]);
+                await queueGattWrite(payload);
+                debugLog(`CMD: Radar dev=${deviceId} action=${cmdId.toString(16)}`);
+                alert('Radar command sent! It may take 1-2 seconds to apply.');
+            } catch (e) {
+                debugLog('Radar CMD failed: ' + e.message);
+                alert('Failed to send Radar command: ' + e.message);
+            }
+        }
+
         async function toggleEspnow() {
             const newState = isEspnowEnabled ? 0 : 1;
             const toggleEl = document.getElementById('toggle-espnow');
@@ -574,7 +622,7 @@
             try {
                 // Master device, switch_id 0xFD, newState
                 const payload = new Uint8Array([0, 0xFD, newState]);
-                await commandChar.writeValue(payload);
+                await queueGattWrite(payload);
                 debugLog(`CMD: Toggle ESPNOW -> ${newState}`);
                 alert("ESP-NOW setting saved. The gateway will now reboot to apply changes.");
                 setTimeout(() => window.location.reload(), 3000); // Reload page as BLE will drop
@@ -624,9 +672,23 @@
                 card.className = 'device-card';
                 card.style.animationDelay = (idx * 0.08) + 's';
 
+                const presenceHtml = dev.presence ? '<span style="color:#00ff88; margin-left:10px; font-weight:bold; font-size:12px;">👤 PRESENT</span>' : '<span style="color:var(--text-dim); margin-left:10px; font-size:12px;">○ CLEAR</span>';
+                const distHtml = dev.presence ? `<span style="color:#aaa; font-size:12px; margin-left:6px;">${dev.distance}cm</span>` : '';
+
                 const badge = dev.id === 0
                     ? '<span class="device-badge">MASTER</span>'
-                    : `<span class="device-badge">ID ${dev.id}</span>`;
+                    : `<span class="device-badge">SLAVE</span>`;
+
+                let barsHtml = '';
+                if (dev.gate_energies && dev.gate_energies.length === 16) {
+                    barsHtml += '<div style="display:flex; gap:2px; height:40px; align-items:flex-end; margin-top:12px; margin-bottom:12px;">';
+                    for (let g = 0; g < 16; g++) {
+                        const energy = dev.gate_energies[g] || 0;
+                        const h = Math.min(100, Math.max(2, (energy / 65535) * 100));
+                        barsHtml += `<div style="flex:1; background:var(--accent); height:${h}%; opacity:0.8; border-radius:2px;" title="Gate ${g}: ${energy}"></div>`;
+                    }
+                    barsHtml += '</div>';
+                }
 
                 let switchesHTML = '';
                 for (let s = 0; s < dev.numSwitches; s++) {
@@ -663,14 +725,27 @@
                             </div>
                         `;
                     }
+                    
+                    settingsHTML += `
+                        <div style="margin-top:16px; border-top:1px solid rgba(255,255,255,0.03); padding-top:12px;">
+                            <span style="font-size:13px; color:var(--accent);">LD2420 Radar Controls</span>
+                            <div style="display:flex; gap:8px; margin-top:10px;">
+                                <button class="action-btn" onclick="sendRadarCommand(${dev.id}, 0xFC)">Auto Calibrate</button>
+                                <button class="action-btn" onclick="sendRadarCommand(${dev.id}, 0xFA)">Restart</button>
+                                <button class="action-btn danger" onclick="sendRadarCommand(${dev.id}, 0xFB)">Reset Defaults</button>
+                            </div>
+                        </div>
+                    `;
+
                     settingsHTML += `</div></div>`;
                 }
 
                 card.innerHTML = `
                     <div class="device-header">
-                        <span class="device-name">${dev.name}</span>
+                        <div><span class="device-name">${dev.name}</span>${presenceHtml}${distHtml}</div>
                         ${badge}
                     </div>
+                    ${barsHtml}
                     ${switchesHTML}
                     ${settingsHTML}`;
 
