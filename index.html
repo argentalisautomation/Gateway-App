@@ -413,10 +413,13 @@
             }
         }
 
+        let isEspnowEnabled = false;
+
         function parseRoster(dataView) {
             const raw = new Uint8Array(dataView.buffer, dataView.byteOffset, dataView.byteLength);
             let offset = 0;
             const numDevices = raw[offset++];
+            isEspnowEnabled = raw[offset++] === 1;
 
             devices = [];
             for (let d = 0; d < numDevices && offset < raw.length; d++) {
@@ -433,11 +436,8 @@
                 }
 
                 const offsetsArr = [];
-                if (deviceId === 0 && offset < raw.length) {
-                    const sysFlags = raw[offset++]; // skip sys flags
-                    for (let s = 0; s < numSwitches && offset < raw.length; s++) {
-                        offsetsArr.push(raw[offset++]);
-                    }
+                for (let s = 0; s < numSwitches && offset < raw.length; s++) {
+                    offsetsArr.push(raw[offset++]);
                 }
 
                 devices.push({ id: deviceId, name, numSwitches, states, offsets: offsetsArr });
@@ -561,15 +561,61 @@
                 alert('Failed to save: ' + e.message);
             }
         }
+        
+        async function toggleEspnow() {
+            const newState = isEspnowEnabled ? 0 : 1;
+            const toggleEl = document.getElementById('toggle-espnow');
+            
+            // Optimistic UI
+            isEspnowEnabled = newState === 1;
+            if (isEspnowEnabled) toggleEl.classList.add('on');
+            else toggleEl.classList.remove('on');
+
+            try {
+                // Master device, switch_id 0xFD, newState
+                const payload = new Uint8Array([0, 0xFD, newState]);
+                await commandChar.writeValue(payload);
+                debugLog(`CMD: Toggle ESPNOW -> ${newState}`);
+                alert("ESP-NOW setting saved. The gateway will now reboot to apply changes.");
+                setTimeout(() => window.location.reload(), 3000); // Reload page as BLE will drop
+            } catch (e) {
+                debugLog('ESPNOW CMD failed: ' + e.message);
+                // Revert
+                isEspnowEnabled = !isEspnowEnabled;
+                toggleEl.classList.toggle('on');
+                alert('Failed to toggle ESP-NOW');
+            }
+        }
 
         // ============================================================
         // Render UI
         // ============================================================
         function renderDevices() {
             deviceList.innerHTML = '';
+            
+            // Add ESP-NOW Toggle at the top
+            const espnowCard = document.createElement('div');
+            espnowCard.className = 'device-card';
+            espnowCard.innerHTML = `
+                <div class="device-header">
+                    <span class="device-name">Mesh Intercom (ESP-NOW)</span>
+                </div>
+                <div class="switch-row">
+                    <span class="switch-label">Enable ESP-NOW Radio</span>
+                    <div class="toggle-btn ${isEspnowEnabled ? 'on' : ''}" id="toggle-espnow"
+                         onclick="toggleEspnow()">
+                        <div class="toggle-knob"></div>
+                    </div>
+                </div>
+                <div style="font-size: 11px; color: #888; margin-top: 10px;">Turn off if you have no slaves and want to eliminate WiFi interference.</div>
+            `;
+            deviceList.appendChild(espnowCard);
 
             if (devices.length === 0) {
-                deviceList.innerHTML = '<div class="empty-state">No devices found.<br>Check your gateway.</div>';
+                const empty = document.createElement('div');
+                empty.className = 'empty-state';
+                empty.innerHTML = 'No devices found.<br>Check your gateway.';
+                deviceList.appendChild(empty);
                 return;
             }
 
@@ -596,7 +642,7 @@
                 }
 
                 let settingsHTML = '';
-                if (dev.id === 0 && dev.offsets && dev.offsets.length > 0) {
+                if (dev.offsets && dev.offsets.length > 0) {
                     settingsHTML = `
                         <div class="settings-panel">
                             <div class="settings-header" onclick="document.getElementById('settings-${dev.id}').classList.toggle('expanded')">
