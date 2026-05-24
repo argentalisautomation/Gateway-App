@@ -243,6 +243,7 @@
 
     <div class="action-bar" id="actionBar" style="display:none;">
         <button class="action-btn refresh" onclick="refreshRoster()">⟳ Refresh</button>
+        <button class="action-btn copy-log" onclick="copyLogs()">📋 Copy Logs</button>
         <button class="action-btn danger" onclick="nuclearReset()">☢ Reset App</button>
     </div>
 
@@ -512,6 +513,25 @@
                     ${switchesHTML}`;
 
                 deviceList.appendChild(card);
+            });
+        }
+
+        // ============================================================
+        // Copy Logs
+        // ============================================================
+        function copyLogs() {
+            const textToCopy = debugBox.innerText || debugBox.textContent;
+            if (!textToCopy) {
+                alert("Logs are empty!");
+                return;
+            }
+            navigator.clipboard.writeText(textToCopy).then(() => {
+                const btn = document.querySelector('.copy-log');
+                const origText = btn.innerText;
+                btn.innerText = "✓ Copied!";
+                setTimeout(() => btn.innerText = origText, 2000);
+            }).catch(err => {
+                alert('Failed to copy: ' + err);
             });
         }
 
