@@ -466,6 +466,7 @@
                 
                 let presence = 0, distance = 0;
                 let gate_energies = [];
+                let radar_config = null;
                 if (offset < raw.length) {
                     presence = raw[offset++];
                     distance = dataView.getUint16(offset, true); offset += 2;
@@ -473,9 +474,21 @@
                         gate_energies.push(dataView.getUint16(offset, true));
                         offset += 2;
                     }
+                    if (offset + 70 <= raw.length) {
+                        radar_config = { move_thresh: [], still_thresh: [] };
+                        radar_config.min_gate = dataView.getUint16(offset, true); offset += 2;
+                        radar_config.max_gate = dataView.getUint16(offset, true); offset += 2;
+                        radar_config.timeout  = dataView.getUint16(offset, true); offset += 2;
+                        for (let g = 0; g < 16; g++) {
+                            radar_config.move_thresh.push(dataView.getUint16(offset, true)); offset += 2;
+                        }
+                        for (let g = 0; g < 16; g++) {
+                            radar_config.still_thresh.push(dataView.getUint16(offset, true)); offset += 2;
+                        }
+                    }
                 }
 
-                devices.push({ id: deviceId, name, numSwitches, states, offsets: offsetsArr, presence, distance, gate_energies });
+                devices.push({ id: deviceId, name, numSwitches, states, offsets: offsetsArr, presence, distance, gate_energies, radar_config });
             }
         }
 
@@ -514,33 +527,44 @@
                     else toggleEl.classList.remove('on');
                 }
             }
-            // debugLog(`State: dev=${deviceId} → [${dev.states.join(',')}]`);
+
+            // Real-time radar updates
+            if (dataView.byteLength >= 2 + numSwitches + 3) {
+                let offset = 2 + numSwitches;
+                const presence = dataView.getUint8(offset++);
+                const distance = dataView.getUint16(offset, true);
+                
+                dev.presence = presence;
+                dev.distance = distance;
+                
+                const presenceEl = document.getElementById(`toggle-presence-${deviceId}`);
+                if (presenceEl) {
+                    if (presence) {
+                        presenceEl.classList.add('on');
+                    } else {
+                        presenceEl.classList.remove('on');
+                    }
+                }
+                
+                const distEl = document.getElementById(`input-distance-${deviceId}`);
+                if (distEl) {
+                    if (presence) {
+                        distEl.value = distance;
+                    } else {
+                        distEl.value = '';
+                    }
+                }
+            }
         }
 
-        // Polling fallback for Android reliability
-        let pollOk = 0;
+        // Polling fallback removed as per requirements
+
         function startStatePolling() {
-            if (pollTimer) clearInterval(pollTimer);
-            pollTimer = setInterval(async () => {
-                if (!stateChar || !gattServer || !gattServer.connected) {
-                    stopStatePolling();
-                    return;
-                }
-                try {
-                    const value = await stateChar.readValue();
-                    pollOk++;
-                    // if (pollOk <= 3 || pollOk % 100 === 0) {
-                    //     debugLog(`Poll OK #${pollOk} (${value.byteLength}B)`);
-                    // }
-                    processStatePacket(value);
-                } catch (e) {
-                    // Silently retry — polling errors are expected occasionally
-                }
-            }, 500);
+            // No-op: we rely entirely on BLE notifications now
         }
 
         function stopStatePolling() {
-            if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+            // No-op
         }
 
         // ============================================================
@@ -661,6 +685,16 @@
             }
         }
 
+        function updateGateInputs(deviceId) {
+            const dev = devices.find(d => d.id === deviceId);
+            if (!dev || !dev.radar_config) return;
+            const gate = parseInt(document.getElementById(`gate-sel-${deviceId}`).value, 10);
+            if (!isNaN(gate) && gate >= 0 && gate < 16) {
+                document.getElementById(`move-th-${deviceId}`).value = dev.radar_config.move_thresh[gate];
+                document.getElementById(`still-th-${deviceId}`).value = dev.radar_config.still_thresh[gate];
+            }
+        }
+
         async function toggleEspnow() {
             const newState = isEspnowEnabled ? 0 : 1;
             const toggleEl = document.getElementById('toggle-espnow');
@@ -723,9 +757,6 @@
                 card.className = 'device-card';
                 card.style.animationDelay = (idx * 0.08) + 's';
 
-                const presenceHtml = dev.presence ? '<span style="color:#00ff88; margin-left:10px; font-weight:bold; font-size:12px;">👤 PRESENT</span>' : '<span style="color:var(--text-dim); margin-left:10px; font-size:12px;">○ CLEAR</span>';
-                const distHtml = dev.presence ? `<span style="color:#aaa; font-size:12px; margin-left:6px;">${dev.distance}cm</span>` : '';
-
                 const badge = dev.id === 0
                     ? '<span class="device-badge">MASTER</span>'
                     : `<span class="device-badge">SLAVE</span>`;
@@ -733,6 +764,29 @@
                 let barsHtml = '';
 
                 let switchesHTML = '';
+                
+                // Add Presence as a disabled toggle
+                const presenceIsOn = dev.presence ? 'on' : '';
+                switchesHTML += `
+                    <div class="switch-row">
+                        <span class="switch-label">Presence</span>
+                        <div class="toggle-btn ${presenceIsOn}" id="toggle-presence-${dev.id}"
+                             style="cursor: default; opacity: 0.8;"
+                             onclick="return false;">
+                            <div class="toggle-knob"></div>
+                        </div>
+                    </div>`;
+
+                // Add Distance as a disabled number box
+                const distanceVal = dev.presence ? dev.distance : '';
+                switchesHTML += `
+                    <div class="switch-row">
+                        <span class="switch-label">Distance (cm)</span>
+                        <input type="number" id="input-distance-${dev.id}" class="setting-input" 
+                               style="width: 80px; text-align: right; opacity: 0.8;" 
+                               value="${distanceVal}" disabled>
+                    </div>`;
+
                 for (let s = 0; s < dev.numSwitches; s++) {
                     const isOn = dev.states[s] ? 'on' : '';
                     switchesHTML += `
@@ -780,15 +834,15 @@
                                     <div style="font-size:12px; color:var(--accent); margin-bottom:10px;">Basic Settings</div>
                                     <div class="setting-row">
                                         <span class="setting-label">Timeout (sec):</span>
-                                        <input type="number" id="timeout-${dev.id}" class="setting-input" value="120" min="0" max="65535">
+                                        <input type="number" id="timeout-${dev.id}" class="setting-input" value="${dev.radar_config ? dev.radar_config.timeout : 120}" min="0" max="65535">
                                     </div>
                                     <div class="setting-row" style="margin-top:8px;">
                                         <span class="setting-label">Min Gate (0-15):</span>
-                                        <input type="number" id="min-gate-${dev.id}" class="setting-input" value="1" min="0" max="15">
+                                        <input type="number" id="min-gate-${dev.id}" class="setting-input" value="${dev.radar_config ? dev.radar_config.min_gate : 1}" min="0" max="15">
                                     </div>
                                     <div class="setting-row" style="margin-top:8px;">
                                         <span class="setting-label">Max Gate (0-15):</span>
-                                        <input type="number" id="max-gate-${dev.id}" class="setting-input" value="12" min="0" max="15">
+                                        <input type="number" id="max-gate-${dev.id}" class="setting-input" value="${dev.radar_config ? dev.radar_config.max_gate : 12}" min="0" max="15">
                                     </div>
                                     <button id="btn-radar-basic-${dev.id}" class="action-btn" style="width:100%; margin-top:10px;" onclick="sendRadarBasic(${dev.id})">Apply Basic Config</button>
                                 </div>
@@ -797,17 +851,17 @@
                                     <div style="font-size:12px; color:var(--accent); margin-bottom:10px;">Gate Sensitivity</div>
                                     <div class="setting-row">
                                         <span class="setting-label">Gate Select:</span>
-                                        <select id="gate-sel-${dev.id}" class="setting-input" style="width:100px;">
+                                        <select id="gate-sel-${dev.id}" class="setting-input" style="width:100px;" onchange="updateGateInputs(${dev.id})">
                                             ${Array.from({length:16}, (_, i) => `<option value="${i}">Gate ${i}</option>`).join('')}
                                         </select>
                                     </div>
                                     <div class="setting-row" style="margin-top:8px;">
                                         <span class="setting-label">Move Thresh:</span>
-                                        <input type="number" id="move-th-${dev.id}" class="setting-input" style="width:100px;" value="250" min="0">
+                                        <input type="number" id="move-th-${dev.id}" class="setting-input" style="width:100px;" value="${dev.radar_config ? dev.radar_config.move_thresh[0] : 250}" min="0">
                                     </div>
                                     <div class="setting-row" style="margin-top:8px;">
                                         <span class="setting-label">Still Thresh:</span>
-                                        <input type="number" id="still-th-${dev.id}" class="setting-input" style="width:100px;" value="200" min="0">
+                                        <input type="number" id="still-th-${dev.id}" class="setting-input" style="width:100px;" value="${dev.radar_config ? dev.radar_config.still_thresh[0] : 200}" min="0">
                                     </div>
                                     <button id="btn-radar-thresh-${dev.id}" class="action-btn" style="width:100%; margin-top:10px;" onclick="sendRadarThresh(${dev.id})">Apply Thresholds</button>
                                 </div>
@@ -826,7 +880,7 @@
 
                 card.innerHTML = `
                     <div class="device-header">
-                        <div><span class="device-name">${dev.name}</span>${presenceHtml}${distHtml}</div>
+                        <div><span class="device-name">${dev.name}</span></div>
                         ${badge}
                     </div>
                     ${barsHtml}
